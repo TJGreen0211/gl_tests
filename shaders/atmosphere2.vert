@@ -3,9 +3,10 @@
 in vec4 vPosition;
 in vec3 vNormal;
 
-out vec3 fPosition;
-out mat3 m;
-out mat3 v;
+out vec4 fPosition;
+out mat4 m;
+out mat4 v;
+out mat4 mvp;
 out vec3 fNormal;
 
 uniform mat4 model;
@@ -14,9 +15,9 @@ uniform mat4 projection;
 
 void main()
 {	
-	fPosition = vec3(vPosition);
+	fPosition = vPosition;
 	fNormal = vNormal;
-	m = mat3(model);
-	v = mat3(view);
+	m = model;
+	v = view;
 	gl_Position = projection*view*model*vPosition;
 }

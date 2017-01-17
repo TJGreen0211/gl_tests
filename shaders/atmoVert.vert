@@ -88,6 +88,8 @@ void main()
 		v += step;
 	}*/
 	
+	vec3 camPosition = vec3(1.0, 0.0, 1000.0);
+	
 	vec3 ray = rayDir(camPosition);
 	vec2 nearT = rayIntersection(camPosition, ray, fOuterRadius);
 	float near = nearT.x;

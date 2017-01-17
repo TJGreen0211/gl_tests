@@ -5,10 +5,10 @@
 uniform float time;
 uniform vec3 camPosition;
 
-in vec3 fPosition;
+in vec4 fPosition;
 in vec3 fNormal;
-in mat3 m;
-in mat3 v;
+in mat4 m;
+in mat4 v;
 
 out vec4 FragColor;
 
@@ -16,6 +16,7 @@ const float PI = 3.14159265359;
 const float degToRad = PI / 180.0;
 const float MAX = 10000.0;
 
+const float DEG_TO_RAD = PI / 180.0;
 float K_R = 0.166;
 const float K_M = 0.0025;
 const float E = 14.3;
@@ -24,7 +25,7 @@ const float G_M = -0.85;
 
 uniform float fInnerRadius;
 uniform float fOuterRadius;
-//float fInnerRadius = 0.75;
+//float fInnerRadius = 0.9;//0.5*0.75;
 //float fOuterRadius = 1.0;
 uniform float sWidth;
 uniform float sHeight;
@@ -51,24 +52,15 @@ mat3 rot3xy( vec2 angle ) {
 vec3 ray_dir( float fov, vec2 size, vec2 pos ) {
 	vec2 xy = pos - size * 0.5;
 
-	float cot_half_fov = tan( ( 90.0 - fov * 0.5 ) * degToRad );	
+	float cot_half_fov = tan( ( 90.0 - fov * 0.5 ) * DEG_TO_RAD );	
 	float z = size.y * 0.5 * cot_half_fov;
 	
-	return normalize( inverse(v)*vec3( xy, -z ) - camPosition);
+	return normalize( vec3( xy, -z ) );
 }
 
 vec3 rayDirection(vec3 camPosition) {
-	/*float fov = 45.0;
-	float cot_half_fov = tan( ( 90.0 - fov * 0.5 ) * degToRad );	
-	float x = 2.0 * gl_FragCoord.x / sWidth - 1.0;
-	float y = -2.0 * gl_FragCoord.y / sHeight + 1.0;
-	float z = sHeight * 0.5 * cot_half_fov;
-	mat3 inv = inverse(v);
-	
-	return normalize(inv*vec3(x, y, -z));
-	*/
-	vec3 ray = m*fPosition - (camPosition);
-	return normalize(ray);// /= far;
+	vec4 ray = m*fPosition - vec4(camPosition, 1.0);
+	return normalize(vec3(ray));
 }
 
 vec2 rayIntersection(vec3 p, vec3 dir, float radius ) {
@@ -111,6 +103,7 @@ float rayleighPhase( float cc ) {
 	return 0.75 * ( 1.0 + cc );
 }
 
+//exp(fScaleOverScaleDepth * (fInnerRadius - fHeight));
 float density(vec3 p) {
 	return exp(-(length(p) - fInnerRadius) * SCALE_H);
 }
@@ -129,17 +122,33 @@ float optic(vec3 p, vec3 q) {
 }
 
 vec3 inScatter(vec3 o, vec3 dir, vec2 e, vec3 l) {
+	//fSampleLength = fFar / fSamples;
 	float len = (e.y - e.x) / fNumInScatter;
+	
+	//v3SampleRay = v3Ray * fSampleLength;
 	vec3 step = dir * len;
+	//v3Start = v3CameraPos + v3Ray * fNear;
 	vec3 p = o + dir * e.x;
+	
+	//fCameraAngle = dot(v3Ray, v3SamplePoint) / fHeight;
+	//v3SamplePoint = v3Start + v3SampleRay * 0.5;
 	vec3 v = p + dir * (len * 0.5);
 	
 	vec3 sum = vec3(0.0);
 	for(int i = 0; i < numInScatter; i++) {
+		
 		vec2 f = rayIntersection(v, l, fOuterRadius);
+		
+		//fLightAngle = dot(v3LightDir, v3SamplePoint) / fHeight;
 		vec3 u = v + l * f.y;
+		
+		//fScatter = scale() * scale()
 		float n = (optic(p, v) + optic(v, u))*(PI * 4.0);
+		
+		//density() = //exp(fScaleOverScaleDepth * (fInnerRadius - fHeight));
+		//v3Attenuate = * exp(-fScatter * (v3InvWavelength * fKr4PI + fKm4PI));
 		sum += density(v)* exp(-n * ( K_R * C_R + K_M ));
+		//v3SamplePoint += v3SampleRay;
 		v += step;
 	}
 	sum *= len * SCALE_L;
@@ -150,12 +159,12 @@ vec3 inScatter(vec3 o, vec3 dir, vec2 e, vec3 l) {
 
 void main (void)
 {
-	//vec3 camPosition = vec3(0.0, 0.0, 100.0);
+	//vec3 camPosition = vec3(2.0, 0.0, 40.5);
 	//vec3 dir = ray_dir( 45.0, vec2(sWidth, sHeight), gl_FragCoord.xy );
-	vec3 dir = rayDirection(vec3(camPosition.x, 0.0, camPosition.z));
-	vec3 eye = vec3(camPosition.x, 0.0, camPosition.z);
+	vec3 dir = rayDirection(camPosition);
+	vec3 eye = camPosition;
 	
-	vec3 l = normalize(vec3(0.0, 0.0, 1.0));
+	vec3 l = normalize(vec3(1.0, 0.0, -1.0));
 	
 	mat3 rot = rot3xy( vec2( 0.0, time * 0.5 ) );
 	//dir = rot * dir;
@@ -164,7 +173,7 @@ void main (void)
 	
 	vec2 e = rayIntersection(eye, dir, fOuterRadius);
 	if ( e.x > e.y ) {
-		discard;
+		//discard;
 	}
 	vec2 f = rayIntersection(eye, dir, fInnerRadius);
 	e.y = min(e.y, f.x);
