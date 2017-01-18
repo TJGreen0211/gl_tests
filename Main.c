@@ -29,8 +29,6 @@ GLuint planetVAO, planetVBO, atmosphereVAO, atmosphereVBO;
 GLuint ModelView, projection, model, view;
 mat4 mv, p, m, v;
 
-vec4 flipFace;
-
 float fScale = 10.0;
 
 mat4 IM = {
@@ -106,7 +104,7 @@ void init()
 	}
 
 	
-	glGenVertexArrays(1, &atmosphereVAO);
+	/*glGenVertexArrays(1, &atmosphereVAO);
 	glBindVertexArray(atmosphereVAO);
 	glGenBuffers(1, &atmosphereVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, atmosphereVBO);
@@ -120,9 +118,9 @@ void init()
     vNormal = glGetAttribLocation(atmosphereShader, "vNormal");
     glEnableVertexAttribArray(vNormal);
     glVertexAttribPointer(vNormal, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(sizeof(fQuad)));
-	glBindVertexArray(0);
+	glBindVertexArray(0);*/
 	
-	/*glGenVertexArrays(1, &atmosphereVAO);
+	glGenVertexArrays(1, &atmosphereVAO);
 	glBindVertexArray(atmosphereVAO);
 	glGenBuffers(1, &atmosphereVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, atmosphereVBO);
@@ -136,7 +134,7 @@ void init()
     vNormal = glGetAttribLocation(atmosphereShader, "vNormal");
     glEnableVertexAttribArray(vNormal);
     glVertexAttribPointer(vNormal, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(planet.size));
-	glBindVertexArray(0);*/
+	glBindVertexArray(0);
 	
 	
     glEnable(GL_DEPTH_TEST);
@@ -159,8 +157,8 @@ mat4 rotationSpace()
 void initMVP(int shader, mat4 m, mat4 v)
 {
 	glUniformMatrix4fv(glGetUniformLocation( shader, "projection" ), 1, GL_TRUE, &p.m[0][0]);
-	glUniformMatrix4fv( glGetUniformLocation( shader, "model" ), 1, GL_TRUE, &m.m[0][0] );
-	glUniformMatrix4fv( glGetUniformLocation( shader, "view" ), 1, GL_TRUE, &v.m[0][0] );
+	glUniformMatrix4fv(glGetUniformLocation( shader, "model" ), 1, GL_TRUE, &m.m[0][0] );
+	glUniformMatrix4fv(glGetUniformLocation( shader, "view" ), 1, GL_TRUE, &v.m[0][0] );
 }
 
 void bindTexture(GLuint activeTex, GLuint tex) {
@@ -173,26 +171,20 @@ void drawAtmosphere()
 	glUseProgram(atmosphereShader);
 	
 	v = getViewMatrix();
-	vec3 Position = getCameraPosition();
-	printf("%f %f %f\n", Position.x, Position.y, Position.z);
+	vec3 Position = {v.m[0][3], v.m[1][3], v.m[2][3]};
 	
 	float scaleFactor = 1.025;
-	m = multiplymat4(translate(0.0, 0.0, -100.0), scale(fScale*scaleFactor));
-	//m = scale(fScale*scaleFactor);//translate(-10.0, 0.0, -10.0);//IM;//scale(scaleFactor);
+	//m = multiplymat4(translate(0.0, 0.0, -10.0), scale(fScale*scaleFactor));
+	m = scale(fScale*scaleFactor);//translate(-10.0, 0.0, -10.0);//IM;//scale(scaleFactor);
 	float fOuter = (fScale*scaleFactor);//2.0;
 	float fInner = (fScale);//2.0;
 	
 	/*for(int i = 0; i < 4; i++) {
 		for(int j = 0; j < 4; j++) {
-			printf("%f ", m.m[j][i]); 
+			printf("%d: %f ", i, v.m[i][j]); 
 		}
 		printf("\n");
 	}*/
-		
-	
-	vec4 cam = {Position.x, Position.y, Position.z, 1.0};
-	cam = multiplymat4vec4(m, cam);
-	//printf("%f, %f, %f\n", Position.x, Position.y, Position.z);
 	
 	glUniform1f(glGetUniformLocation(atmosphereShader, "sWidth"), 1400.0);
 	glUniform1f(glGetUniformLocation(atmosphereShader, "sHeight"), 800.0);
@@ -205,7 +197,7 @@ void drawAtmosphere()
 	initMVP(atmosphereShader, m, v);
 	
 	glBindVertexArray (atmosphereVAO);
-	glDrawArrays( GL_TRIANGLES, 0, 6);
+	glDrawArrays( GL_TRIANGLES, 0, planet.vertexNumber);
 	glBindVertexArray(0);
     
 }
@@ -217,18 +209,11 @@ void drawPlanet()
 	v = getViewMatrix();
 	//m = multiplymat4(translate(-10.0, 0.0, -10.0), scale(fScale));
 	m = scale(fScale);
-	glUniform1f(glGetUniformLocation(planetShader, "time"), glfwGetTime());
+	//glUniform1f(glGetUniformLocation(planetShader, "time"), glfwGetTime());
 	initMVP(planetShader, m, v);
 	
-	
-	vec3 g = getCameraPosition();
-	//vec4 gg = {1.0, 1.0, 1.0, 0.0};
-	vec4 gg = {g.x, g.y, g.z, 0.0};
-	
-	flipFace = multiplymat4vec4(m, gg);
-	
     glBindVertexArray (planetVAO);
-    //glDrawArrays( GL_TRIANGLES, 0, planet.vertexNumber);
+    glDrawArrays( GL_TRIANGLES, 0, planet.vertexNumber);
     glBindVertexArray(0);
 }
 
@@ -254,9 +239,8 @@ GLFWwindow *setupGLFW() {
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_SAMPLES, 4);
 	
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "SolarSystem", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Atmosphere", NULL, NULL);
 	glfwMakeContextCurrent(window);
-	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_ENABLED);
 	glfwSetKeyCallback(window, key_callback);
 	glfwSetCursorPosCallback(window, mouse_callback);
 	glfwSetScrollCallback(window, scroll_callback);
@@ -287,8 +271,8 @@ int main(int argc, char *argv[])
 		glViewport(0, 0, WIDTH, HEIGHT);
 
 		drawPlanet();
-		//glEnable(GL_BLEND);
-		//glBlendFunc(GL_ONE, GL_ONE);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ONE, GL_ONE);
 		drawAtmosphere();
 		glDisable(GL_BLEND);
 		glFrontFace(GL_CCW);

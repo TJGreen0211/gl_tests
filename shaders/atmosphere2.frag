@@ -25,8 +25,6 @@ const float G_M = -0.85;
 
 uniform float fInnerRadius;
 uniform float fOuterRadius;
-//float fInnerRadius = 0.9;//0.5*0.75;
-//float fOuterRadius = 1.0;
 uniform float sWidth;
 uniform float sHeight;
 
@@ -47,15 +45,6 @@ mat3 rot3xy( vec2 angle ) {
 		s.y * s.x,  c.x,  c.y * s.x,
 		s.y * c.x, -s.x,  c.y * c.x
 	);
-}
-
-vec3 ray_dir( float fov, vec2 size, vec2 pos ) {
-	vec2 xy = pos - size * 0.5;
-
-	float cot_half_fov = tan( ( 90.0 - fov * 0.5 ) * DEG_TO_RAD );	
-	float z = size.y * 0.5 * cot_half_fov;
-	
-	return normalize( vec3( xy, -z ) );
 }
 
 vec3 rayDirection(vec3 camPosition) {
@@ -159,6 +148,7 @@ vec3 inScatter(vec3 o, vec3 dir, vec2 e, vec3 l) {
 
 void main (void)
 {
+	vec3 camPosition = -v[3].xyz * mat3(v);
 	//vec3 camPosition = vec3(2.0, 0.0, 40.5);
 	//vec3 dir = ray_dir( 45.0, vec2(sWidth, sHeight), gl_FragCoord.xy );
 	vec3 dir = rayDirection(camPosition);
@@ -169,7 +159,7 @@ void main (void)
 	mat3 rot = rot3xy( vec2( 0.0, time * 0.5 ) );
 	//dir = rot * dir;
 	//eye = rot * eye;
-	l = rot * l;
+	//l = rot * l;
 	
 	vec2 e = rayIntersection(eye, dir, fOuterRadius);
 	if ( e.x > e.y ) {

@@ -11,7 +11,7 @@ GLfloat Zoom = 45.0f;
 float xpos = 0, ypos = 0, zpos = 0;
 float lastx, lasty;
 
-vec3 Position = {0.0, 0.0, 0.0};
+vec3 Position = {0.0, 0.0, -25.0};
 vec3 Up = {0.0, 1.0, 0.0};
 vec3 Front = {0.0, 0.0, -1.0};
 vec3 Right = {1.0, 0.0, 0.0};
