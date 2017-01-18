@@ -99,27 +99,6 @@ void init()
     glVertexAttribPointer(vNormal, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(planet.size));
 	glBindVertexArray(0);
 	
-	for(int i = 0; i < planet.size; i++) {
-		//printf("%d, %f %f %f\n", i, planet.points[i].x, planet.points[i].y, planet.points[i].z);
-	}
-
-	
-	/*glGenVertexArrays(1, &atmosphereVAO);
-	glBindVertexArray(atmosphereVAO);
-	glGenBuffers(1, &atmosphereVBO);
-	glBindBuffer(GL_ARRAY_BUFFER, atmosphereVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(fQuad) + sizeof(fQuadTex), NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(fQuad), fQuad);
-	glBufferSubData(GL_ARRAY_BUFFER, sizeof(fQuad), sizeof(fQuadTex), fQuadTex);
-	
-	vPosition = glGetAttribLocation(atmosphereShader, "vPosition");
-    glEnableVertexAttribArray(vPosition);
-    glVertexAttribPointer(vPosition, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(0));	  
-    vNormal = glGetAttribLocation(atmosphereShader, "vNormal");
-    glEnableVertexAttribArray(vNormal);
-    glVertexAttribPointer(vNormal, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(sizeof(fQuad)));
-	glBindVertexArray(0);*/
-	
 	glGenVertexArrays(1, &atmosphereVAO);
 	glBindVertexArray(atmosphereVAO);
 	glGenBuffers(1, &atmosphereVBO);
@@ -171,27 +150,43 @@ void drawAtmosphere()
 	glUseProgram(atmosphereShader);
 	
 	v = getViewMatrix();
-	vec3 Position = {v.m[0][3], v.m[1][3], v.m[2][3]};
 	
-	float scaleFactor = 1.025;
+	mat3 cc = {{
+	{0.0, 0.0, 0.0},
+	{0.0, 0.0, 0.0},
+	{0.0, 0.0, 0.0}
+}};
+	for(int i = 0; i < 3; i++) {
+		for(int j = 0; j < 3; j++) {
+			cc.m[i][j] = v.m[i][j]; 
+		}
+	}
+	
+	//vec3 camPosition = -view[3].xyz * mat3(view);
+	vec3 position = {-v.m[0][3], -v.m[1][3], -v.m[2][3]};
+	vec3 cam = multiplymat3vec3(transposemat3(cc), position);
+	printf("cam: %f %f %f\n", cam.x, cam.y, cam.z);
+	
+	float scaleFactor = 1.25;
 	//m = multiplymat4(translate(0.0, 0.0, -10.0), scale(fScale*scaleFactor));
 	m = scale(fScale*scaleFactor);//translate(-10.0, 0.0, -10.0);//IM;//scale(scaleFactor);
-	float fOuter = (fScale*scaleFactor);//2.0;
+	float fOuter = (fScale*scaleFactor);
 	float fInner = (fScale);//2.0;
 	
-	/*for(int i = 0; i < 4; i++) {
+	for(int i = 0; i < 4; i++) {
 		for(int j = 0; j < 4; j++) {
 			printf("%d: %f ", i, v.m[i][j]); 
 		}
 		printf("\n");
-	}*/
+	}
+	
 	
 	glUniform1f(glGetUniformLocation(atmosphereShader, "sWidth"), 1400.0);
 	glUniform1f(glGetUniformLocation(atmosphereShader, "sHeight"), 800.0);
 	
 	glUniform1f(glGetUniformLocation(atmosphereShader, "fInnerRadius"), fInner);
 	glUniform1f(glGetUniformLocation(atmosphereShader, "fOuterRadius"), fOuter);
-	glUniform3f(glGetUniformLocation(atmosphereShader, "camPosition"), Position.x, Position.y, Position.z);
+	glUniform3f(glGetUniformLocation(atmosphereShader, "camPosition"), cam.x, cam.y, cam.z);
 	glUniform1f(glGetUniformLocation(atmosphereShader, "time"), glfwGetTime());
 
 	initMVP(atmosphereShader, m, v);
@@ -273,6 +268,7 @@ int main(int argc, char *argv[])
 		drawPlanet();
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_ONE, GL_ONE);
+		//glFrontFace(GL_CW);
 		drawAtmosphere();
 		glDisable(GL_BLEND);
 		glFrontFace(GL_CCW);

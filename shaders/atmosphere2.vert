@@ -6,7 +6,6 @@ in vec3 vNormal;
 out vec4 fPosition;
 out mat4 m;
 out mat4 v;
-out mat4 mvp;
 out vec3 fNormal;
 
 uniform mat4 model;

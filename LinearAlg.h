@@ -10,6 +10,14 @@ typedef struct mat4 {
 	float m[4][4];
 } mat4;
 
+typedef struct mat3 {
+	float m[3][3];
+} mat3;
+
+typedef struct mat2 {
+	float m[2][2];
+} mat2;
+
 typedef struct vec4 {
 	float x, y, z, w;
 } vec4;
@@ -77,6 +85,12 @@ mat4 scale(float value);
 
 mat4 multiplymat4(mat4 c, mat4 d);
 vec4 multiplymat4vec4(mat4 a, vec4 v);
+vec3 multiplymat3vec3(mat3 a, vec3 v);
+vec2 multiplymat2vec2(mat2 a, vec2 v);
+
+mat4 transposemat4(mat4 a);
+mat3 transposemat3(mat3 a);
+mat2 transposemat2(mat2 a);
 
 mat4 perspective(float fovy, float aspect, float zNear, float zFar);
 mat4 frustum(float left, float right, float bottom, float top, float zNear, float zFar);

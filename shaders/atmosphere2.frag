@@ -1,7 +1,5 @@
 #version 410
 
-//uniform vec4 LightPosition;
-//uniform vec3 camPosition;
 uniform float time;
 uniform vec3 camPosition;
 
@@ -148,22 +146,18 @@ vec3 inScatter(vec3 o, vec3 dir, vec2 e, vec3 l) {
 
 void main (void)
 {
-	vec3 camPosition = -v[3].xyz * mat3(v);
-	//vec3 camPosition = vec3(2.0, 0.0, 40.5);
-	//vec3 dir = ray_dir( 45.0, vec2(sWidth, sHeight), gl_FragCoord.xy );
+	//vec3 camPosition = -v[3].xyz * mat3(v);
 	vec3 dir = rayDirection(camPosition);
 	vec3 eye = camPosition;
 	
 	vec3 l = normalize(vec3(1.0, 0.0, -1.0));
 	
-	mat3 rot = rot3xy( vec2( 0.0, time * 0.5 ) );
-	//dir = rot * dir;
-	//eye = rot * eye;
+	//mat3 rot = rot3xy( vec2( 0.0, time * 0.5 ) );
 	//l = rot * l;
 	
 	vec2 e = rayIntersection(eye, dir, fOuterRadius);
 	if ( e.x > e.y ) {
-		//discard;
+		discard;
 	}
 	vec2 f = rayIntersection(eye, dir, fInnerRadius);
 	e.y = min(e.y, f.x);

@@ -17,6 +17,28 @@ mat4 ZERO_MATRIX = {{
 }};
 
 
+mat3 IDENTITY_MATRIX_3 = {{
+	{0.0, 0.0, 0.0},
+	{0.0, 0.0, 0.0},
+	{0.0, 0.0, 0.0}
+}};
+
+mat3 ZERO_MATRIX_3 = {{
+	{0.0, 0.0, 0.0},
+	{0.0, 0.0, 0.0},
+	{0.0, 0.0, 0.0}
+}};
+
+mat2 IDENTITY_MATRIX_2 = {{
+	{0.0, 0.0},
+	{0.0, 0.0}
+}};
+
+mat2 ZERO_MATRIX_2 = {{
+	{0.0, 0.0},
+	{0.0, 0.0}
+}};
+
 vec4 addvec4(vec4 v, vec4 u)
 {
 	vec4 temp = {v.x + u.x, v.y + u.y, v.z + u.z, v.w + u.w,};
@@ -313,6 +335,80 @@ vec4 multiplymat4vec4(mat4 a, vec4 v)
 	vout.z = u[2];
 	vout.w = u[3];
 	return vout;
+}
+
+vec3 multiplymat3vec3(mat3 a, vec3 v)
+{
+	vec3 vout;
+	float temp = 0;
+	float u[3] = {0};
+	u[0] = v.x;
+	u[1] = v.y;
+	u[2] = v.z;
+	for(int i = 0; i < 3; i++)
+	{
+		for(int j = 0; j < 3; j++)
+		{
+			temp += a.m[i][j]*u[j];
+		}
+		u[i] = temp;
+		temp = 0;
+	}
+	vout.x = u[0];
+	vout.y = u[1];
+	vout.z = u[2];
+	return vout;
+}
+
+vec2 multiplymat2vec2(mat2 a, vec2 v)
+{
+	vec2 vout;
+	float temp = 0;
+	float u[2] = {0};
+	u[0] = v.x;
+	u[1] = v.y;
+	for(int i = 0; i < 2; i++)
+	{
+		for(int j = 0; j < 2; j++)
+		{
+			temp += a.m[i][j]*u[j];
+		}
+		u[i] = temp;
+		temp = 0;
+	}
+	vout.x = u[0];
+	vout.y = u[1];
+	return vout;
+}
+
+mat4 transposemat4(mat4 a) {
+	mat4 out = ZERO_MATRIX;
+	for(int i = 0; i < 4; i++) {
+		for(int j = 0; j < 4; j++) {
+			out.m[j][i] = a.m[i][j];
+		}
+	}
+	return out;
+}
+
+mat3 transposemat3(mat3 a) {
+	mat3 out = ZERO_MATRIX_3;
+	for(int i = 0; i < 3; i++) {
+		for(int j = 0; j < 3; j++) {
+			out.m[j][i] = a.m[i][j];
+		}
+	}
+	return out;
+}
+
+mat2 transposemat2(mat2 a) {
+	mat2 out = ZERO_MATRIX_2;
+	for(int i = 0; i < 2; i++) {
+		for(int j = 0; j < 2; j++) {
+			out.m[j][i] = a.m[i][j];
+		}
+	}
+	return out;
 }
 
 mat4 perspective(float fovy, float aspect, float zNear, float zFar)
