@@ -80,8 +80,8 @@ void init()
 	createShader(&planetShader, "shaders/planet.vert",
 		"shaders/planet.frag");
 	
-	createShader(&atmosphereShader, "shaders/atmosphere2.vert",
-		"shaders/atmosphere2.frag");
+	createShader(&atmosphereShader, "shaders/atmosphere.vert",
+		"shaders/atmosphere.frag");
 	
 	glGenVertexArrays(1, &planetVAO);
 	glBindVertexArray(planetVAO);
