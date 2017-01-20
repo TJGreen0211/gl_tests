@@ -30,7 +30,7 @@ GLuint ModelView, projection, model, view;
 mat4 mv, p, m, v;
 
 float fScale = 10.0;
-
+vec3 translation = {-20.0, 0.0, -10.0};
 mat4 IM = {
 	{{1.0, 0.0, 0.0, 0.0},
 	{0.0, 1.0, 0.0, 0.0},
@@ -153,7 +153,7 @@ void drawAtmosphere()
 	//printf("cam: %f %f %f\n", cam.x, cam.y, cam.z);
 	
 	float scaleFactor = 1.25;
-	m = multiplymat4(translate(0.0, 0.0, -10.0), scale(fScale*scaleFactor));
+	m = multiplymat4(translatevec3(translation), scale(fScale*scaleFactor));
 	//m = scale(fScale*scaleFactor);//translate(-10.0, 0.0, -10.0);//IM;//scale(scaleFactor);
 	float fOuter = (fScale*scaleFactor);
 	float fInner = (fScale);//2.0;
@@ -168,6 +168,7 @@ void drawAtmosphere()
 	glUniform1f(glGetUniformLocation(atmosphereShader, "fInnerRadius"), fInner);
 	glUniform1f(glGetUniformLocation(atmosphereShader, "fOuterRadius"), fOuter);
 	glUniform3f(glGetUniformLocation(atmosphereShader, "camPosition"), cam.x, cam.y, cam.z);
+	glUniform3f(glGetUniformLocation(atmosphereShader, "translation"), translation.x, translation.y, translation.z);
 	glUniform1f(glGetUniformLocation(atmosphereShader, "time"), glfwGetTime());
 
 	initMVP(atmosphereShader, m, v);
@@ -183,7 +184,7 @@ void drawPlanet()
 	glUseProgram(planetShader);
 	
 	v = getViewMatrix();
-	m = multiplymat4(translate(0.0, 0.0, -10.0), scale(fScale));
+	m = multiplymat4(translatevec3(translation), scale(fScale));
 	//m = scale(fScale);
 	//glUniform1f(glGetUniformLocation(planetShader, "time"), glfwGetTime());
 	initMVP(planetShader, m, v);

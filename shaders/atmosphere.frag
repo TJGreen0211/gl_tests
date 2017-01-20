@@ -2,6 +2,7 @@
 
 uniform float time;
 uniform vec3 camPosition;
+uniform vec3 translation;
 
 in vec4 fPosition;
 in vec3 fNormal;
@@ -145,9 +146,9 @@ vec3 inScatter(vec3 o, vec3 dir, vec2 e, vec3 l) {
 void main (void)
 {
 	mat4 modelmat = mat4(
-		1.000000, 0.000000, 0.000000, 0.000000, 
-		0.000000, 1.00000, 0.000000, 0.000000, 
-		0.000000, 0.000000, 1.00000, -10.000000, 
+		1.000000, 0.000000, 0.000000, translation.x, 
+		0.000000, 1.00000, 0.000000, translation.y, 
+		0.000000, 0.000000, 1.00000, translation.z, 
 		0.000000, 0.000000, 0.000000, 1.000000);
 	
 	mat4 tv = transpose(modelmat*v);//[3].xyz * mat3(v);
