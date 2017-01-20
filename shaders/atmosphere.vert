@@ -18,5 +18,5 @@ void main()
 	fNormal = vNormal;
 	m = model;
 	v = view;
-	gl_Position = projection*view*model*vPosition;
+	gl_Position = vPosition*model*view*projection;
 }

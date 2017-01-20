@@ -38,21 +38,6 @@ mat4 IM = {
 	{0.0, 0.0, 0.0, 1.0}}
 };
 
-float fQuad[] = {  
-	-1.0f, -1.0f, 0.0f,
-	1.0f, -1.0f, 0.0f,
-    1.0f, 1.0f, 0.0f,
-    -1.0f, 1.0f, 0.0f,
-    -1.0f, -1.0f, 0.0f,
-    1.0f, 1.0f, 0.0f
-};
-float fQuadTex[] = {
-	0.0f, 0.0f,
-    1.0f, 0.0f,
-    1.0f, 1.0f,
-    0.0f, 1.0f
-};
-
 void createShader(GLuint *shader, char *vert, char *frag)
 {
 	GLuint vertShader = LoadShader(vert, GL_VERTEX_SHADER);
@@ -135,9 +120,9 @@ mat4 rotationSpace()
 
 void initMVP(int shader, mat4 m, mat4 v)
 {
-	glUniformMatrix4fv(glGetUniformLocation( shader, "projection" ), 1, GL_TRUE, &p.m[0][0]);
-	glUniformMatrix4fv(glGetUniformLocation( shader, "model" ), 1, GL_TRUE, &m.m[0][0] );
-	glUniformMatrix4fv(glGetUniformLocation( shader, "view" ), 1, GL_TRUE, &v.m[0][0] );
+	glUniformMatrix4fv(glGetUniformLocation( shader, "projection" ), 1, GL_FALSE, &p.m[0][0]);
+	glUniformMatrix4fv(glGetUniformLocation( shader, "model" ), 1, GL_FALSE, &m.m[0][0] );
+	glUniformMatrix4fv(glGetUniformLocation( shader, "view" ), 1, GL_FALSE, &v.m[0][0] );
 }
 
 void bindTexture(GLuint activeTex, GLuint tex) {
@@ -165,24 +150,20 @@ void drawAtmosphere()
 	//vec3 camPosition = -view[3].xyz * mat3(view);
 	vec3 position = {-v.m[0][3], -v.m[1][3], -v.m[2][3]};
 	vec3 cam = multiplymat3vec3(transposemat3(cc), position);
-	printf("cam: %f %f %f\n", cam.x, cam.y, cam.z);
+	//printf("cam: %f %f %f\n", cam.x, cam.y, cam.z);
 	
 	float scaleFactor = 1.25;
-	//m = multiplymat4(translate(0.0, 0.0, -10.0), scale(fScale*scaleFactor));
-	m = scale(fScale*scaleFactor);//translate(-10.0, 0.0, -10.0);//IM;//scale(scaleFactor);
+	m = multiplymat4(translate(0.0, 0.0, -10.0), scale(fScale*scaleFactor));
+	//m = scale(fScale*scaleFactor);//translate(-10.0, 0.0, -10.0);//IM;//scale(scaleFactor);
 	float fOuter = (fScale*scaleFactor);
 	float fInner = (fScale);//2.0;
 	
 	for(int i = 0; i < 4; i++) {
 		for(int j = 0; j < 4; j++) {
-			printf("%d: %f ", i, v.m[i][j]); 
+			//printf("%d: %f ", i, m.m[i][j]); 
 		}
-		printf("\n");
+		//printf("\n");
 	}
-	
-	
-	glUniform1f(glGetUniformLocation(atmosphereShader, "sWidth"), 1400.0);
-	glUniform1f(glGetUniformLocation(atmosphereShader, "sHeight"), 800.0);
 	
 	glUniform1f(glGetUniformLocation(atmosphereShader, "fInnerRadius"), fInner);
 	glUniform1f(glGetUniformLocation(atmosphereShader, "fOuterRadius"), fOuter);
@@ -202,8 +183,8 @@ void drawPlanet()
 	glUseProgram(planetShader);
 	
 	v = getViewMatrix();
-	//m = multiplymat4(translate(-10.0, 0.0, -10.0), scale(fScale));
-	m = scale(fScale);
+	m = multiplymat4(translate(0.0, 0.0, -10.0), scale(fScale));
+	//m = scale(fScale);
 	//glUniform1f(glGetUniformLocation(planetShader, "time"), glfwGetTime());
 	initMVP(planetShader, m, v);
 	
@@ -276,8 +257,8 @@ int main(int argc, char *argv[])
 		glfwSwapBuffers(window);
 	}
 	
-	//glDeleteVertexArrays(1, &atmosphereVAO);
-    //glDeleteBuffers(1, &atmosphereVBO);
+	glDeleteVertexArrays(1, &atmosphereVAO);
+    glDeleteBuffers(1, &atmosphereVBO);
 	glDeleteVertexArrays(1, &planetVAO);
     glDeleteBuffers(1, &planetVBO);
 	

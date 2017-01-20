@@ -23,8 +23,6 @@ const float G_M = -0.85;
 
 uniform float fInnerRadius;
 uniform float fOuterRadius;
-uniform float sWidth;
-uniform float sHeight;
 
 float SCALE_H = 4.0 / (fOuterRadius - fInnerRadius);
 float SCALE_L = 1.0 / (fOuterRadius - fInnerRadius);
@@ -146,7 +144,14 @@ vec3 inScatter(vec3 o, vec3 dir, vec2 e, vec3 l) {
 
 void main (void)
 {
-	vec3 camPosition = -v[3].xyz * mat3(v);
+	mat4 modelmat = mat4(
+		1.000000, 0.000000, 0.000000, 0.000000, 
+		0.000000, 1.00000, 0.000000, 0.000000, 
+		0.000000, 0.000000, 1.00000, -10.000000, 
+		0.000000, 0.000000, 0.000000, 1.000000);
+	
+	mat4 tv = transpose(modelmat*v);//[3].xyz * mat3(v);
+	vec3 camPosition = vec3(-tv[3] * tv);//-transpose(mat3(v))*v[3].xyz;
 	vec3 dir = rayDirection(camPosition);
 	vec3 eye = camPosition;
 	
@@ -157,7 +162,7 @@ void main (void)
 	
 	vec2 e = rayIntersection(eye, dir, fOuterRadius);
 	if ( e.x > e.y ) {
-		discard;
+		//discard;
 	}
 	vec2 f = rayIntersection(eye, dir, fInnerRadius);
 	e.y = min(e.y, f.x);
