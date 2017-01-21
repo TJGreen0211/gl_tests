@@ -16,12 +16,18 @@ GLfloat lastFrame = 0.0f;
 
 const float WIDTH = 1400, HEIGHT = 800;
 float ASPECT = WIDTH/HEIGHT;
+float theta;
 
 sphere planet;
 
 float zNear = 0.5, zFar = 100000.0;
 float thetaY = 0.0;
 float zoom = 1;
+
+float rad = 50.0;
+float rotX;
+float rotY;
+float rotZ;
 
 GLuint planetShader, atmosphereShader;
 GLuint vPosition, vNormal;
@@ -30,7 +36,7 @@ GLuint ModelView, projection, model, view;
 mat4 mv, p, m, v;
 
 float fScale = 10.0;
-vec3 translation = {-20.0, 0.0, -10.0};
+vec3 translation;
 mat4 IM = {
 	{{1.0, 0.0, 0.0, 0.0},
 	{0.0, 1.0, 0.0, 0.0},
@@ -137,10 +143,10 @@ void drawAtmosphere()
 	v = getViewMatrix();
 	
 	mat3 cc = {{
-	{0.0, 0.0, 0.0},
-	{0.0, 0.0, 0.0},
-	{0.0, 0.0, 0.0}
-}};
+		{0.0, 0.0, 0.0},
+		{0.0, 0.0, 0.0},
+		{0.0, 0.0, 0.0}
+	}};
 	for(int i = 0; i < 3; i++) {
 		for(int j = 0; j < 3; j++) {
 			cc.m[i][j] = v.m[i][j]; 
@@ -152,18 +158,20 @@ void drawAtmosphere()
 	vec3 cam = multiplymat3vec3(transposemat3(cc), position);
 	//printf("cam: %f %f %f\n", cam.x, cam.y, cam.z);
 	
-	float scaleFactor = 1.25;
+	float scaleFactor = 1.025;
+	//float alpha = 0;
+	//float deltaX = z * cos(alpha) - x * sin(alpha);
+	//float deltaZ = x * cos(alpha) + z * sin(alpha);
 	m = multiplymat4(translatevec3(translation), scale(fScale*scaleFactor));
-	//m = scale(fScale*scaleFactor);//translate(-10.0, 0.0, -10.0);//IM;//scale(scaleFactor);
 	float fOuter = (fScale*scaleFactor);
 	float fInner = (fScale);//2.0;
 	
-	for(int i = 0; i < 4; i++) {
+	/*for(int i = 0; i < 4; i++) {
 		for(int j = 0; j < 4; j++) {
-			//printf("%d: %f ", i, m.m[i][j]); 
+			printf("[%d][%d]:%f ", i, j, m.m[i][j]); 
 		}
-		//printf("\n");
-	}
+		printf("\n");
+	}*/
 	
 	glUniform1f(glGetUniformLocation(atmosphereShader, "fInnerRadius"), fInner);
 	glUniform1f(glGetUniformLocation(atmosphereShader, "fOuterRadius"), fOuter);
@@ -185,8 +193,6 @@ void drawPlanet()
 	
 	v = getViewMatrix();
 	m = multiplymat4(translatevec3(translation), scale(fScale));
-	//m = scale(fScale);
-	//glUniform1f(glGetUniformLocation(planetShader, "time"), glfwGetTime());
 	initMVP(planetShader, m, v);
 	
     glBindVertexArray (planetVAO);
@@ -246,6 +252,13 @@ int main(int argc, char *argv[])
 		glClearColor(0.0f, 0.1f, 0.2f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glViewport(0, 0, WIDTH, HEIGHT);
+		
+		/*translation.x = rad * cos(theta);
+		translation.y = 0.0;
+		translation.z = rad * sin(theta);*/
+		translation.x = -20.0;
+		translation.y = 0.0;
+		translation.z = -10.0;
 
 		drawPlanet();
 		glEnable(GL_BLEND);
@@ -256,6 +269,8 @@ int main(int argc, char *argv[])
 		glFrontFace(GL_CCW);
 		
 		glfwSwapBuffers(window);
+		
+		theta += 0.001;
 	}
 	
 	glDeleteVertexArrays(1, &atmosphereVAO);

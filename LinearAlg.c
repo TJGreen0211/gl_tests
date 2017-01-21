@@ -458,7 +458,7 @@ mat4 lookAt(vec3 eye, vec3 at, vec3 up)
 	vec3 umv = {eye.x - at.x, eye.y - at.y, eye.z - at.z};
 	vec3 n = normalizevec3(umv);
 	vec3 u = normalizevec3(crossvec3(up, n));
-	vec3 v = normalizevec3(crossvec3(n, u));
+	vec3 v = crossvec3(n, u);
 	mat4 c = IDENTITY_MATRIX;
 	c.m[0][0] = u.x;
 	c.m[1][0] = u.y;
@@ -472,9 +472,9 @@ mat4 lookAt(vec3 eye, vec3 at, vec3 up)
 	c.m[1][2] = n.y;
 	c.m[2][2] = n.z;
 	
-	c.m[0][3] = 0.0f;
-	c.m[1][3] = 0.0f;
-	c.m[2][3] = 0.0f;
+	c.m[0][3] = -dotvec3(u, eye);//0.0f;
+	c.m[1][3] = -dotvec3(v, eye);//0.0f;
+	c.m[2][3] = -dotvec3(n, eye);//0.0f;
 	c.m[3][3] = 1.0f;
 	vec3 negativeEye = {-eye.x, -eye.y, -eye.x};
 	mat4 d = translatevec3(negativeEye);

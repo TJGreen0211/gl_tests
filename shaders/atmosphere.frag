@@ -156,7 +156,11 @@ void main (void)
 	vec3 dir = rayDirection(camPosition);
 	vec3 eye = camPosition;
 	
-	vec3 l = normalize(vec3(1.0, 0.0, -1.0));
+	vec4 LightPosition = vec4(0.0, 0.0, 1.0, 1.0);
+	vec4 LP = (LightPosition-fPosition*m);
+	vec3 lightDir = LP.xyz;
+	
+	vec3 l = normalize(vec3(0.0, 0.0, 1.0));
 	
 	//mat3 rot = rot3xy( vec2( 0.0, time * 0.5 ) );
 	//l = rot * l;
