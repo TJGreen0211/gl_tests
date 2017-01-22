@@ -11,6 +11,7 @@ GLfloat Zoom = 45.0f;
 float xpos = 0, ypos = 0, zpos = 0;
 float lastx, lasty;
 
+mat4 tr, ry, rx, rxry;
 vec3 Position = {0.0, 0.0, -25.0};
 vec3 Up = {0.0, 1.0, 0.0};
 vec3 Front = {0.0, 0.0, -1.0};
@@ -18,7 +19,6 @@ vec3 Right = {1.0, 0.0, 0.0};
 
 mat4 getViewMatrix()
 {	
-	mat4 tr, ry, rx, rxry;
 	rx = rotateX(Pitch);
 	ry = rotateY(Yaw);
 	rxry = multiplymat4(rx, ry);
@@ -27,15 +27,14 @@ mat4 getViewMatrix()
 	return multiplymat4(rxry, tr);//lookAt(Position,addvec3(Position,Front), Up);//
 }
 
-vec3 getCameraPosition()
+mat4 getViewPosition()
 {
-	return Position;
+	return tr;
 }
 
-vec2 getCameraRotation()
+mat4 getViewRotation()
 {
-	vec2 v = {Yaw, Pitch};
-	return v;
+	return rxry;
 }
 
 void updateCameraVectors()

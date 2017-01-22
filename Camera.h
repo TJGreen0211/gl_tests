@@ -18,10 +18,9 @@ enum Camera_Movement {
 	RIGHT
 };
 
-
 mat4 getViewMatrix();
-vec3 getCameraPosition();
-vec2 getCameraRotation();
+mat4 getViewPosition();
+mat4 getViewRotation();
 
 void updateCameraVectors();
 void processKeyboard(enum Camera_Movement direction, GLfloat deltaTime);

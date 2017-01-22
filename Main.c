@@ -37,12 +37,6 @@ mat4 mv, p, m, v;
 
 float fScale = 10.0;
 vec3 translation;
-mat4 IM = {
-	{{1.0, 0.0, 0.0, 0.0},
-	{0.0, 1.0, 0.0, 0.0},
-	{0.0, 0.0, 1.0, 0.0},
-	{0.0, 0.0, 0.0, 1.0}}
-};
 
 void createShader(GLuint *shader, char *vert, char *frag)
 {
@@ -115,15 +109,6 @@ void createPerspectiveMatrix()
 	p = perspective(45.0, ASPECT, zNear, zFar);
 }
 
-mat4 rotationSpace()
-{
-	vec2 rotation = getCameraRotation();
-    mat4 rx = rotateX(rotation.y);
-	mat4 ry = rotateY(rotation.x);
-	mat4 rxry = multiplymat4(rx, ry);
-	return rxry;
-}
-
 void initMVP(int shader, mat4 m, mat4 v)
 {
 	glUniformMatrix4fv(glGetUniformLocation( shader, "projection" ), 1, GL_FALSE, &p.m[0][0]);
@@ -142,21 +127,10 @@ void drawAtmosphere()
 	
 	v = getViewMatrix();
 	
-	mat3 cc = {{
-		{0.0, 0.0, 0.0},
-		{0.0, 0.0, 0.0},
-		{0.0, 0.0, 0.0}
-	}};
-	for(int i = 0; i < 3; i++) {
-		for(int j = 0; j < 3; j++) {
-			cc.m[i][j] = v.m[i][j]; 
-		}
-	}
-	
-	//vec3 camPosition = -view[3].xyz * mat3(view);
-	vec3 position = {-v.m[0][3], -v.m[1][3], -v.m[2][3]};
-	vec3 cam = multiplymat3vec3(transposemat3(cc), position);
-	//printf("cam: %f %f %f\n", cam.x, cam.y, cam.z);
+	mat4 modelmat = translatevec3(translation);
+	mat4 tv = transposemat4(multiplymat4(modelmat, getViewPosition()));
+	vec4 camMult = {-tv.m[3][0], -tv.m[3][1], -tv.m[3][2], -tv.m[3][3]};
+	vec4 camPosition = multiplymat4vec4(tv, camMult);
 	
 	float scaleFactor = 1.025;
 	//float alpha = 0;
@@ -164,18 +138,11 @@ void drawAtmosphere()
 	//float deltaZ = x * cos(alpha) + z * sin(alpha);
 	m = multiplymat4(translatevec3(translation), scale(fScale*scaleFactor));
 	float fOuter = (fScale*scaleFactor);
-	float fInner = (fScale);//2.0;
-	
-	/*for(int i = 0; i < 4; i++) {
-		for(int j = 0; j < 4; j++) {
-			printf("[%d][%d]:%f ", i, j, m.m[i][j]); 
-		}
-		printf("\n");
-	}*/
+	float fInner = (fScale);
 	
 	glUniform1f(glGetUniformLocation(atmosphereShader, "fInnerRadius"), fInner);
 	glUniform1f(glGetUniformLocation(atmosphereShader, "fOuterRadius"), fOuter);
-	glUniform3f(glGetUniformLocation(atmosphereShader, "camPosition"), cam.x, cam.y, cam.z);
+	glUniform3f(glGetUniformLocation(atmosphereShader, "camPosition"), camPosition.x, camPosition.y, camPosition.z);
 	glUniform3f(glGetUniformLocation(atmosphereShader, "translation"), translation.x, translation.y, translation.z);
 	glUniform1f(glGetUniformLocation(atmosphereShader, "time"), glfwGetTime());
 
@@ -196,7 +163,7 @@ void drawPlanet()
 	initMVP(planetShader, m, v);
 	
     glBindVertexArray (planetVAO);
-    glDrawArrays( GL_TRIANGLES, 0, planet.vertexNumber);
+   	glDrawArrays( GL_TRIANGLES, 0, planet.vertexNumber);
     glBindVertexArray(0);
 }
 

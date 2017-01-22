@@ -3,6 +3,7 @@
 uniform float time;
 uniform vec3 camPosition;
 uniform vec3 translation;
+uniform mat4 test;
 
 in vec4 fPosition;
 in vec3 fNormal;
@@ -145,21 +146,17 @@ vec3 inScatter(vec3 o, vec3 dir, vec2 e, vec3 l) {
 
 void main (void)
 {
-	mat4 modelmat = mat4(
+	/*mat4 modelmat = mat4(
 		1.000000, 0.000000, 0.000000, translation.x, 
-		0.000000, 1.00000, 0.000000, translation.y, 
-		0.000000, 0.000000, 1.00000, translation.z, 
+		0.000000, 1.000000, 0.000000, translation.y, 
+		0.000000, 0.000000, 1.000000, translation.z, 
 		0.000000, 0.000000, 0.000000, 1.000000);
 	
-	mat4 tv = transpose(modelmat*v);//[3].xyz * mat3(v);
-	vec3 camPosition = vec3(-tv[3] * tv);//-transpose(mat3(v))*v[3].xyz;
+	mat4 tv = transpose(modelmat*v);
+	vec3 camPosition = vec3(-tv[3] * tv);*/
 	vec3 dir = rayDirection(camPosition);
 	vec3 eye = camPosition;
-	
-	vec4 LightPosition = vec4(0.0, 0.0, 1.0, 1.0);
-	vec4 LP = (LightPosition-fPosition*m);
-	vec3 lightDir = LP.xyz;
-	
+
 	vec3 l = normalize(vec3(0.0, 0.0, 1.0));
 	
 	//mat3 rot = rot3xy( vec2( 0.0, time * 0.5 ) );

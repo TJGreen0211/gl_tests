@@ -11,7 +11,7 @@ void main()
 	vec4 AmbientProduct = vec4(0.2, 0.2, 0.2, 1.0)*vec4(0.2, 0.2, 1.0, 1.0);
 	vec4 DiffuseProduct = vec4(1.0, 1.0, 1.0, 1.0)*vec4(0.8, 0.8, 0.8, 1.0);
 	vec4 SpecularProduct = vec4(1.0, 1.0, 1.0, 1.0)*vec4(0.1, 0.1, 0.1, 1.0);
-	float Shininess = 100.0;
+	float Shininess = 1.0;
     
     float Kd = max(dot(fL, fN), 0.0);
     float Ks = pow(max(dot(fN, fH), 0.0), Shininess);
