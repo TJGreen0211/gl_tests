@@ -19,30 +19,26 @@ float ASPECT = WIDTH/HEIGHT;
 float theta;
 
 sphere planet;
+mat4 matArray[5];
 
 float zNear = 0.5, zFar = 100000.0;
 float thetaY = 0.0;
 float zoom = 1;
 
 float rad = 50.0;
+float sphereSize = 10.0;
 float rotX;
 float rotY;
 float rotZ;
 
-GLuint planetShader, starShader;
-GLuint vPosition, vNormal;
-GLuint planetVAO, planetVBO, atmosphereVAO, atmosphereVBO;
+GLuint lightShader, lightShader;
+GLuint vPosition, vNormal, v1, v2, v3, v4;
+GLuint atmosphereVAO, atmosphereVBO;
 GLuint ModelView, projection, model, view;
 mat4 mv, p, m, v;
 
 float fScale = 10.0;
 vec3 translation;
-mat4 IM = {
-	{{1.0, 0.0, 0.0, 0.0},
-	{0.0, 1.0, 0.0, 0.0},
-	{0.0, 0.0, 1.0, 0.0},
-	{0.0, 0.0, 0.0, 1.0}}
-};
 
 void createShader(GLuint *shader, char *vert, char *frag)
 {
@@ -68,27 +64,97 @@ void init()
 {
 	planet = tetrahedron(5);
 	
-	createShader(&starShader, "shaders/star.vert",
-		"shaders/star.frag");
+	for(int i = 0; i < 5; i++) {
+		float r = rad*(i+1.0);
+		translation.x = r * cos(theta);
+		translation.y = 0.0;
+		translation.z = r * sin(theta);
+		mat4 matT = multiplymat4(translatevec3(translation), scale(sphereSize));
+		mat4 matR = multiplymat4(rotateY(theta), rotateX(45.0));
+		m = multiplymat4(matT,matR);
+		matArray[i] = m;
+	}
+	
+	createShader(&lightShader, "shaders/light.vert",
+		"shaders/light.frag");
+		
+	GLuint instanceVBO;
+	glGenBuffers(1, &instanceVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(mat4) * 3.0, NULL, GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	
+	//Use existing VAO. - BufferSub data?
 
 	glGenVertexArrays(1, &atmosphereVAO);
 	glBindVertexArray(atmosphereVAO);
 	glGenBuffers(1, &atmosphereVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, atmosphereVBO);
-	glBufferData(GL_ARRAY_BUFFER, planet.size + planet.nsize, NULL, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, planet.size + planet.nsize + sizeof(matArray), NULL, GL_STATIC_DRAW);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, planet.size, planet.points);
 	glBufferSubData(GL_ARRAY_BUFFER, planet.size, planet.nsize, planet.normals);
+	glBufferSubData(GL_ARRAY_BUFFER, planet.size+planet.nsize, sizeof(matArray), matArray);
 	
-	vPosition = glGetAttribLocation(starShader, "vPosition");
+	//printf("\n%lu\n", sizeof(mat4));
+	//printf("\n%lu\n", 4*sizeof(vec4));
+	
+	vPosition = glGetAttribLocation(lightShader, "vPosition");
     glEnableVertexAttribArray(vPosition);
-    glVertexAttribPointer(vPosition, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(0));	  
-    vNormal = glGetAttribLocation(starShader, "vNormal");
+    glVertexAttribPointer(vPosition, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(0));
+    	  
+    vNormal = glGetAttribLocation(lightShader, "vNormal");
     glEnableVertexAttribArray(vNormal);
     glVertexAttribPointer(vNormal, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(planet.size));
-	glBindVertexArray(0);
+	
+	long unsigned int nextOffset = 0;
+	for(int i = 0; i < 5; i++)
+	{
+		glEnableVertexAttribArray(3);
+		glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(vec4), BUFFER_OFFSET(nextOffset+planet.size+planet.nsize));
+		glEnableVertexAttribArray(4);
+		glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(vec4), BUFFER_OFFSET(nextOffset+planet.size+planet.nsize+sizeof(vec4)));
+		glEnableVertexAttribArray(5);
+		glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(vec4), BUFFER_OFFSET(nextOffset+planet.size+planet.nsize+sizeof(vec4)*2));
+		glEnableVertexAttribArray(6);
+		glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(vec4), BUFFER_OFFSET(nextOffset+planet.size+planet.nsize+sizeof(vec4)*3));
+	
+		nextOffset += sizeof(mat4);
+	
+		glVertexAttribDivisor(3, 1);
+		glVertexAttribDivisor(4, 1);
+		glVertexAttribDivisor(5, 1);
+		glVertexAttribDivisor(6, 1);
+		
+		glBindVertexArray(0);
+	}
+	
 	
 	
     glEnable(GL_DEPTH_TEST);
+}
+
+void setupLighting(int prog)
+{	
+    vec4 light_ambient = {0.2, 0.2, 0.2, 1.0};
+    vec4 light_diffuse = {1.0, 1.0, 1.0, 1.0};
+    vec4 light_specular = {1.0, 1.0, 1.0, 1.0};
+    
+    vec4 material_ambient = {0.2, 0.2, 1.0, 1.0};
+    vec4 material_diffuse = {0.8, 0.8, 0.8, 1.0};
+    vec4 material_specular = {0.5, 0.5, 0.5, 1.0};
+    
+    vec4 light_position = {0.0, 0.0, 1.0, 1.0}; 
+    float material_shininess = 50.0f;
+    
+    vec4 ambient_product = multiplyvec4(light_ambient, material_ambient);
+    vec4 diffuse_product = multiplyvec4(light_diffuse, material_diffuse);
+    vec4 specular_product = multiplyvec4(light_specular, material_specular);
+    
+    glUniform4fv( glGetUniformLocation(prog, "ambientProduct"), 1, (float*)(&ambient_product) );
+    glUniform4fv( glGetUniformLocation(prog, "diffuseProduct"), 1, (float*)(&diffuse_product) );
+    glUniform4fv( glGetUniformLocation(prog, "specularProduct"), 1, (float*)(&specular_product) );
+	glUniform4fv( glGetUniformLocation(prog, "lightPos"), 1, (float*)(&light_position) );
+	glUniform1f ( glGetUniformLocation(prog, "shininess"), material_shininess );
 }
 
 void createPerspectiveMatrix()
@@ -99,7 +165,7 @@ void createPerspectiveMatrix()
 void initMVP(int shader, mat4 m, mat4 v)
 {
 	glUniformMatrix4fv(glGetUniformLocation( shader, "projection" ), 1, GL_FALSE, &p.m[0][0]);
-	glUniformMatrix4fv(glGetUniformLocation( shader, "model" ), 1, GL_FALSE, &m.m[0][0] );
+	//glUniformMatrix4fv(glGetUniformLocation( shader, "model" ), 1, GL_FALSE, &m.m[0][0] );
 	glUniformMatrix4fv(glGetUniformLocation( shader, "view" ), 1, GL_FALSE, &v.m[0][0] );
 }
 
@@ -108,29 +174,31 @@ void bindTexture(GLuint activeTex, GLuint tex) {
     glBindTexture(GL_TEXTURE_2D, tex);
 }
 
-void drawAtmosphere()
+void drawSphere()
 {
-	glUseProgram(starShader);
 	
-	v = getViewMatrix();
+	//float s = (float)rand()/(float)RAND_MAX;
+	glUseProgram(lightShader);
+	setupLighting(lightShader);
+	v = getViewMatrix();	
 	
-	float scaleFactor = 1.025;
+	for(int i = 0; i < 5; i++) {
+		
+		//initMVP(lightShader, m, v);
+		
+		glUniformMatrix4fv(glGetUniformLocation( lightShader, "projection" ), 1, GL_FALSE, &p.m[0][0]);
+		glUniformMatrix4fv(glGetUniformLocation( lightShader, "model" ), 1, GL_FALSE, &matArray[i].m[0][0] );
+		glUniformMatrix4fv(glGetUniformLocation( lightShader, "view" ), 1, GL_FALSE, &v.m[0][0] );
 	
-	m = multiplymat4(translatevec3(translation), scale(fScale*scaleFactor));
-	float fOuter = (fScale*scaleFactor);
-	float fInner = (fScale);
-	
-	glUniform1f(glGetUniformLocation(starShader, "fInnerRadius"), fInner);
-	glUniform1f(glGetUniformLocation(starShader, "fOuterRadius"), fOuter);
-	glUniform3f(glGetUniformLocation(starShader, "translation"), translation.x, translation.y, translation.z);
-	glUniform1f(glGetUniformLocation(starShader, "time"), glfwGetTime());
-
-	initMVP(starShader, m, v);
-	
-	glBindVertexArray (atmosphereVAO);
-	glDrawArrays( GL_TRIANGLES, 0, planet.vertexNumber);
-	glBindVertexArray(0);
-    
+		glBindVertexArray (atmosphereVAO);
+		//bindTexture(GL_TEXTURE0, planetInstanceArray[i].texture);
+		//bindTexture(GL_TEXTURE1, planetInstanceArray[i].normal);
+		//glUniform1i(glGetUniformLocation(lightShader, "tex"), 0);
+		//glUniform1i(glGetUniformLocation(lightShader, "normalTex"), 1);
+		glDrawArrays( GL_TRIANGLES, 0, planet.vertexNumber);
+		glDrawElementsInstanced(GL_TRIANGLES, planet.vertexNumber, GL_UNSIGNED_INT, 0, 5);
+		glBindVertexArray(0);
+	}
 }
 
 void doMovement()
@@ -165,7 +233,7 @@ GLFWwindow *setupGLFW() {
 
 int main(int argc, char *argv[])
 {
-	chdir("/Users/tjgreen/Documents/OpenGL/gl_tests/star");
+	chdir("/Users/tjgreen/Documents/OpenGL/gl_tests/instancing");
 	
 	GLFWwindow *window = setupGLFW();
 
@@ -189,13 +257,13 @@ int main(int argc, char *argv[])
 		/*translation.x = rad * cos(theta);
 		translation.y = 0.0;
 		translation.z = rad * sin(theta);*/
-		translation.x = 0.0;
-		translation.y = 0.0;
-		translation.z = -10.0;
+		//translation.x = 0.0;
+		//translation.y = 0.0;
+		//translation.z = -10.0;
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_ONE, GL_ONE);
-		drawAtmosphere();
+		drawSphere();
 		glDisable(GL_BLEND);
 		
 		glfwSwapBuffers(window);
@@ -205,8 +273,6 @@ int main(int argc, char *argv[])
 	
 	glDeleteVertexArrays(1, &atmosphereVAO);
     glDeleteBuffers(1, &atmosphereVBO);
-	glDeleteVertexArrays(1, &planetVAO);
-    glDeleteBuffers(1, &planetVBO);
 	
 	glfwTerminate();
 	return 0;
