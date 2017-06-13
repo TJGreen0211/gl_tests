@@ -411,7 +411,7 @@ int main(int argc, char *argv[])
 		glClear(GL_COLOR_BUFFER_BIT);
 		glClearColor(1.0, 1.0, 1.0, 1.0);
 		
-		model = translate(-5.0, 0.0, 0.0);
+		model = scale(25.0);
 		draw(screenVAO, framebufferShader, 6, textureColorBuffer, model);
 		model = floorModelspace(theta);
 		draw(floorVAO, shadowShader, 6, floorTex, model);
