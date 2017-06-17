@@ -7,24 +7,30 @@ layout (location = 2) in vec2 vTexCoords;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+uniform mat4 lightSpace;
+uniform vec3 cameraPos;
 
 out vec2 texCoords;
 out vec3 fE;
 out vec3 fN;
 out vec3 fL;
 out vec3 fH;
+out vec4 fLightSpace;
 
 void main()
 {	
 	gl_Position = vPosition*model*view*projection;
+	vec4 ray = normalize(model*vPosition - vec4(cameraPos, 1.0));
 	
 	mat3 normalMatrix = transpose(inverse(mat3(model)));
-	vec4 lightPos = vec4(0.0, 0.0, 0.0, 1.0);
-	vec3 lightDir = -normalize(vPosition*model - lightPos).xyz;
+	vec4 lightPos = vec4(50.0, 0.0, 50.0, 1.0);
+	vec3 lightDir = normalize(vPosition*model - lightPos).xyz;
 	fE = normalize(vPosition*model).xyz;
 	fN = normalize(vNormal*normalMatrix);
 	fL = normalize(lightDir);
-	fH = normalize(lightDir + (vPosition*model).xyz);
+	fH = normalize((vPosition*model - lightPos) + ray).xyz;
+	
+	fLightSpace = vPosition*lightSpace;
 	texCoords = vTexCoords;
 	
 	//vColor = vec3(1.0, 0.5, 0.2);

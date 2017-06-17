@@ -7,8 +7,9 @@ layout (location = 2) in vec2 vTexCoords;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+uniform mat4 lightSpace;
 
 void main()
 {	
-	gl_Position = vPosition*model*view*projection;
+	gl_Position = vPosition*model*view*projection;;
 }

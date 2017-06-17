@@ -23,8 +23,6 @@ mat4 getViewMatrix();
 mat4 getViewPosition();
 mat4 getViewRotation();
 
-vec3 getCameraPosition();
-
 void updateCameraVectors();
 void processKeyboard(enum Camera_Movement direction, GLfloat deltaTime , GLfloat deltaSpeed);
 void processMouseMovement(GLfloat xpos, GLfloat ypos);
