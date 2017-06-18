@@ -361,7 +361,10 @@ void draw(GLuint VAO, GLuint shader, GLuint vertices, GLuint texture, mat4 m, ma
 	glBindVertexArray(VAO);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture);
-	glUniform1i(glGetUniformLocation(texture, "texture1"), 0);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, depthMap);
+	glUniform1i(glGetUniformLocation(shadowShader, "texture1"), 0);
+	glUniform1i(glGetUniformLocation(shadowShader, "depthMap"), 1);
 	glUniform3f(glGetUniformLocation(shader, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	glUniformMatrix4fv(glGetUniformLocation(shader, "lightSpace"), 1, GL_FALSE, &l.m[0][0]);
 	
@@ -413,18 +416,35 @@ int main(int argc, char *argv[])
 	//glEnable(GL_MULTISAMPLE);
 	glCullFace(GL_BACK);
 	
-	vec4 lightPosition = {-100.0, 0.0, 0.0, 1.0};
+	vec4 lightPosition = {50.0, -100.0, 0.0, 1.0};
 	mat4 model;
-	mat4 lightProjection = ortho(-10.0, 10.0, -10.0, 10.0, zNear, zFar);
-	mat4 rxry = multiplymat4(rotateX(0.0f), rotateY(-90.0f));
-	mat4 lightView = multiplymat4(rxry, translatevec4(lightPosition));
-	mat4 lightSpaceMatrix = multiplymat4(lightProjection, lightView);
+	mat4 lightProjection = ortho(-100.0, 100.0, -100.0, 100.0, zNear, zFar);
 	while(!glfwWindowShouldClose(window))
 	{
 		theta += 0.5;
 		GLfloat currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
+		
+		float rad = 180.0 / M_PI;
+		vec3 d = {lightPosition.x - 0.0, lightPosition.y - 0.0, lightPosition.z - 0.0};
+		d = normalizevec3(d);
+		
+		float lightYaw = asin(-d.y) * rad;
+		float lightPitch = atan2(d.x, d.z) * rad;
+		
+		mat4 rxry = multiplymat4(rotateX(lightYaw), rotateY(lightPitch));
+		mat4 lightView = multiplymat4(rxry, translatevec4(lightPosition));
+		mat4 lightSpaceMatrix = multiplymat4(lightProjection, lightView);
+		
+		/*for(int i = 0; i < 4; i++) {
+			for(int j = 0; j < 4; j++) {
+				printf("%f, ", lightView.m[i][j]);
+			}
+			printf("\n");
+		}
+		printf("\n");
+		*/
 		
 		doMovement(deltaTime);
 		glClearColor(1.0, 1.0, 1.0, 1.0);
@@ -448,7 +468,7 @@ int main(int argc, char *argv[])
 		model = floorModelspace(theta);
 		draw(floorVAO, shadowShader, 6, floorTex, model, lightSpaceMatrix);
 		for(int i = 0; i < numCubes; i++) {
-				model = cubeModelspace(theta, posXArray[i], posZArray[i]);
+			model = cubeModelspace(theta, posXArray[i], posZArray[i]);
 			draw(cubeVAO, shadowShader, 36, cubeTex, model, lightSpaceMatrix);
 		}
 		

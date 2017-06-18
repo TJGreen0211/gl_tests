@@ -11,5 +11,5 @@ uniform mat4 lightSpace;
 
 void main()
 {	
-	gl_Position = vPosition*model*view*projection;;
+	gl_Position = vPosition*model*lightSpace;;
 }

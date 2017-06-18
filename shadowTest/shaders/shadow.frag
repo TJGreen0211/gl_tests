@@ -10,11 +10,12 @@ in vec4 fLightSpace;
 out vec4 FragColor;
 
 uniform sampler2D texture1;
+uniform sampler2D depthMap;
 
 float shadowCalculation(vec4 fLight) {
 	vec3 projCoords = fLight.xyz/fLight.w;
 	projCoords = projCoords * 0.5 + 0.5;
-	float closestDepth = texture(texture1, projCoords.xy).r;
+	float closestDepth = texture(depthMap, projCoords.xy).r;
 	float currentDepth = projCoords.z;
 	float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
 	return shadow;
