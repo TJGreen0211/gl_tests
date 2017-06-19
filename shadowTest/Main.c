@@ -416,7 +416,7 @@ int main(int argc, char *argv[])
 	//glEnable(GL_MULTISAMPLE);
 	glCullFace(GL_BACK);
 	
-	vec4 lightPosition = {50.0, -100.0, 0.0, 1.0};
+	vec4 lightPosition = {10.0, -50.0, 0.0, 1.0};
 	mat4 model;
 	mat4 lightProjection = ortho(-100.0, 100.0, -100.0, 100.0, zNear, zFar);
 	while(!glfwWindowShouldClose(window))
@@ -435,7 +435,7 @@ int main(int argc, char *argv[])
 		
 		mat4 rxry = multiplymat4(rotateX(lightYaw), rotateY(lightPitch));
 		mat4 lightView = multiplymat4(rxry, translatevec4(lightPosition));
-		mat4 lightSpaceMatrix = multiplymat4(lightProjection, lightView);
+		mat4 lightSpaceMatrix = lightView;//multiplymat4(lightProjection, lightView);
 		
 		/*for(int i = 0; i < 4; i++) {
 			for(int j = 0; j < 4; j++) {
