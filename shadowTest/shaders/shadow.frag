@@ -13,12 +13,23 @@ uniform sampler2D texture1;
 uniform sampler2D depthMap;
 
 float shadowCalculation(vec4 fLight) {
-	float bias = 0.0005;
+	float bias = max(0.005 * (1.0 - dot(fN, fL)), 0.0005);
 	vec3 projCoords = fLight.xyz/fLight.w;
 	projCoords = projCoords * 0.5 + 0.5;
 	float closestDepth = texture(depthMap, projCoords.xy).r;
 	float currentDepth = projCoords.z;
-	float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
+	float shadow = 0.0;
+	vec2 texelSize = 1.0 / textureSize(depthMap, 0);
+	for(int x = -1; x <= 1; ++x) {
+		for(int y = -1; y <= 1; ++y) {
+			float pcfDepth = texture(depthMap, projCoords.xy + vec2(x, y) * texelSize).r;
+			shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
+		}
+	}
+	shadow /= 9.0;
+	
+	if(projCoords.z > 1.0)
+		shadow = 0.0;
 	return shadow;
 }
 

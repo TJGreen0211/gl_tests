@@ -63,12 +63,13 @@ GLuint generateTextureAttachment(int depth, int stencil) {
 		glTexImage2D(GL_TEXTURE_2D, 0, attachment_type, getWindowWidth(), getWindowHeight(), 0, attachment_type, GL_UNSIGNED_BYTE, NULL);
 	else if(depth && !stencil)
 		glTexImage2D(GL_TEXTURE_2D, 0, attachment_type, getWindowWidth(), getWindowHeight(), 0, attachment_type, GL_FLOAT, NULL);
+		
 	else
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, getWindowWidth(), getWindowHeight(), 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST ); 
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);//GL_CLAMP_TO_BORDER
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);//GL_CLAMP_TO_BORDER
     glBindTexture(GL_TEXTURE_2D, 0);
 	return textureID;
 }
@@ -416,9 +417,10 @@ int main(int argc, char *argv[])
 	//glEnable(GL_MULTISAMPLE);
 	glCullFace(GL_BACK);
 	
+	
 	vec4 lightPosition = {10.0, -50.0, 0.0, 1.0};
 	mat4 model;
-	mat4 lightProjection = ortho(-100.0, 100.0, -100.0, 100.0, zNear, zFar);
+	//mat4 lightProjection = ortho(-100.0, 100.0, -100.0, 100.0, zNear, zFar);
 	while(!glfwWindowShouldClose(window))
 	{
 		theta += 0.5;
@@ -446,6 +448,7 @@ int main(int argc, char *argv[])
 		printf("\n");
 		*/
 		
+		//glCullFace(GL_FRONT);
 		doMovement(deltaTime);
 		glClearColor(1.0, 1.0, 1.0, 1.0);
 		glViewport(0, 0, getWindowWidth(), getWindowHeight());
@@ -458,7 +461,10 @@ int main(int argc, char *argv[])
 				model = cubeModelspace(theta, posXArray[i], posZArray[i]);
 				draw(cubeVAO, depthShader, 36, cubeTex, model, lightSpaceMatrix);
 			}
+			model = multiplymat4(translate(0.0, -15.0, 0.0), scale(3.0));
+			draw(cubeVAO, depthShader, 36, cubeTex, model, lightSpaceMatrix);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		//glCullFace(GL_BACK);
 		
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 		glClearColor(1.0, 1.0, 1.0, 1.0);
@@ -471,6 +477,8 @@ int main(int argc, char *argv[])
 			model = cubeModelspace(theta, posXArray[i], posZArray[i]);
 			draw(cubeVAO, shadowShader, 36, cubeTex, model, lightSpaceMatrix);
 		}
+		model = multiplymat4(translate(0.0, -15.0, 0.0), scale(3.0));
+		draw(cubeVAO, shadowShader, 36, cubeTex, model, lightSpaceMatrix);
 		
 		glfwPollEvents();
 		glfwSwapBuffers(window);
