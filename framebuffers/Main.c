@@ -8,11 +8,6 @@ GLuint textureColorBuffer;
 int keys;
 int actionPress;
 
-typedef struct bufferObjects {
-	GLuint vao;
-	GLuint vbo;
-} bufferObjects;
-
 GLuint loadTexture(char const * path)
 {
     //Generate texture ID and load texture data 

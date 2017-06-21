@@ -359,7 +359,7 @@ int main(int argc, char *argv[])
 	
 	GLuint floorVAO = initFloor(lightShader);
 	GLuint cubeVAO = initCube(lightShader);
-	GLuint fboTexture = initFramebuffer();
+	GLuint hdrFBO = initFramebuffer();
 	GLuint screenVAO = initFloor(lightShader);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
@@ -369,18 +369,49 @@ int main(int argc, char *argv[])
 	{
 		theta += 0.5;
 		glClearColor(1.0, 1.0, 1.0, 1.0);
-		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 		GLfloat currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
 		doMovement(deltaTime);
 		
+		glViewport(0, 0, getWindowWidth(), getWindowHeight());
+		
+		glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		model = multiplymat4(translate(1.0, 0.0, 5.0), multiplymat4(rotateX(theta), rotateY(theta)));
 		draw(cubeVAO, lightShader, 36, cubeTex, model);
 		model = multiplymat4(scale(25.0), rotateX(90.0));
 		draw(floorVAO, lightShader, 6, floorTex, model);
 		model = multiplymat4(translate(0.0, -15.0, 0.0), scale(3.0));
 		draw(cubeVAO, lightShader, 36, cubeTex, model);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		model = multiplymat4(translate(1.0, 0.0, 5.0), multiplymat4(rotateX(theta), rotateY(theta)));
+		draw(cubeVAO, lightShader, 36, cubeTex, model);
+		model = multiplymat4(scale(25.0), rotateX(90.0));
+		draw(floorVAO, lightShader, 6, floorTex, model);
+		model = multiplymat4(translate(0.0, -15.0, 0.0), scale(3.0));
+		draw(cubeVAO, lightShader, 36, cubeTex, model);
+		
+		model = scale(25.0);
+		draw(screenVAO, hdrShader, 6, textureColorBuffer, model);
+		glUniform1i(glGetUniformLocation(hdrShader, "hdr"), 1);
+		model = multiplymat4(scale(25.0), rotateY(90.0));
+		draw(screenVAO, hdrShader, 6, textureColorBuffer, model);
+		glUniform1i(glGetUniformLocation(hdrShader, "hdr"), 0);
+		
+		//Screen
+		/*glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glUseProgram(hdrShader);
+	
+		glBindVertexArray(screenVAO);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, textureColorBuffer);
+		glUniform1i(glGetUniformLocation(hdrShader, "texture1"), 0);
+		//glDrawArrays(GL_TRIANGLES, 0, 6);
+		glBindVertexArray(0);
+		*/
 		
 		glfwPollEvents();
 		glfwSwapBuffers(window);

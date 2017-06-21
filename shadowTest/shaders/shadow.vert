@@ -30,7 +30,7 @@ void main()
 	fL = normalize(lightDir);
 	fH = normalize((vPosition*model - lightPos) + ray).xyz;
 	
-	fLightSpace = vPosition*model*lightSpace*projection;
+	fLightSpace = vPosition*model*lightSpace;
 	texCoords = vTexCoords;
 	
 	//vColor = vec3(1.0, 0.5, 0.2);

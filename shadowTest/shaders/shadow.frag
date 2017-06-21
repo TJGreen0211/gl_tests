@@ -13,7 +13,7 @@ uniform sampler2D texture1;
 uniform sampler2D depthMap;
 
 float shadowCalculation(vec4 fLight) {
-	float bias = max(0.005 * (1.0 - dot(fN, fL)), 0.0005);
+	float bias = max(0.9 * (1.0 - dot(fN, fL)), 0.5);
 	vec3 projCoords = fLight.xyz/fLight.w;
 	projCoords = projCoords * 0.5 + 0.5;
 	float closestDepth = texture(depthMap, projCoords.xy).r;
@@ -23,7 +23,7 @@ float shadowCalculation(vec4 fLight) {
 	for(int x = -1; x <= 1; ++x) {
 		for(int y = -1; y <= 1; ++y) {
 			float pcfDepth = texture(depthMap, projCoords.xy + vec2(x, y) * texelSize).r;
-			shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
+			shadow += currentDepth - 0.0001 > pcfDepth ? 1.0 : 0.0;
 		}
 	}
 	shadow /= 9.0;
