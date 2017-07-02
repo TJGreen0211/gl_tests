@@ -45,6 +45,13 @@ GLuint initLightShader() {
 	return shader;
 }
 
+GLuint initAtmosphereShader() {
+	GLuint shader;
+	createShader(&shader, "shaders/atmosphere.vert",
+		"shaders/atmosphere.frag");
+	return shader;
+}
+
 GLuint initTessShader() {
 	GLuint shader;
 	GLuint vertShader = LoadShader("shaders/tess.vert", GL_VERTEX_SHADER);
@@ -188,9 +195,16 @@ GLuint initFloor() {
 }
 
 vec4 getCameraPosition(mat4 model) {
-	mat4 mvTranspose = transposemat4(multiplymat4(model, getViewPosition()));
+	mat4 modelmat = {
+	{{1.0, 0.0, 0.0, 0.0},
+	{0.0, 1.0, 0.0, 0.0},
+	{0.0, 0.0, 1.0, 0.0},
+	{0.0, 0.0, 0.0, 1.0}}
+	};
+	mat4 mvTranspose = transposemat4(multiplymat4(modelmat, getViewPosition()));
 	vec4 inverseCamera = {-mvTranspose.m[3][0], -mvTranspose.m[3][1], -mvTranspose.m[3][2], -mvTranspose.m[3][3]};
 	vec4 camPosition = multiplymat4vec4(mvTranspose, inverseCamera);
+	
 	return camPosition;
 }
 
@@ -202,7 +216,7 @@ void initMVP(int shader, mat4 m, mat4 v) {
 }
 
 
-void draw(GLuint VAO, GLuint shader, GLuint vertices, GLuint texture, mat4 m) {
+void draw(GLuint VAO, GLuint shader, int vertices, GLuint texture, mat4 m) {
 	glUseProgram(shader);
 	initMVP(shader, m, getViewMatrix());
 	vec4 cameraPos = getCameraPosition(m);
@@ -217,7 +231,38 @@ void draw(GLuint VAO, GLuint shader, GLuint vertices, GLuint texture, mat4 m) {
 	glBindVertexArray(0);
 }
 
-void drawTess(GLuint vao, GLuint shader, GLuint vertices, mat4 m) {
+void drawAtmoshere(GLuint VAO, GLuint shader, int vertices, mat4 m) {
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_ONE, GL_ONE);
+	
+	glUseProgram(shader);
+	initMVP(shader, m, getViewMatrix());
+	vec4 camPosition = getCameraPosition(m);
+	
+	//float scaleFactor = 3.25;
+	float fOuter = 10.25;
+	float fInner = 10.0;
+	vec3 C_R = {0.3, 0.7, 1.0};
+	float E = 14.3;
+	
+	glUniform1f(glGetUniformLocation(shader, "fInnerRadius"), fInner);
+	glUniform1f(glGetUniformLocation(shader, "fOuterRadius"), fOuter);
+	glUniform3f(glGetUniformLocation(shader, "camPosition"), camPosition.x, camPosition.y, camPosition.z);
+	glUniform3f(glGetUniformLocation(shader, "C_R"), C_R.x, C_R.y, C_R.z);
+	glUniform1f(glGetUniformLocation(shader, "E"), E);
+	glUniform1f(glGetUniformLocation(shader, "time"), glfwGetTime());
+	
+	glUniform3f(glGetUniformLocation(shader, "camPosition"), camPosition.x, camPosition.y, camPosition.z);
+	//printf("%f, %f, %f\n", camPosition.x, camPosition.y, camPosition.z);
+	
+	glBindVertexArray(VAO);
+	glDrawArrays(GL_TRIANGLES, 0, vertices);
+	glBindVertexArray(0);
+	
+	glDisable(GL_BLEND);
+}
+
+void drawTess(GLuint vao, GLuint shader, int vertices, mat4 m) {
 	glUseProgram(shader);
 	initMVP(shader, m, getViewMatrix());
 	glBindVertexArray(vao);
@@ -248,6 +293,7 @@ int main(int argc, char *argv[])
 	
 	GLuint lightShader = initLightShader();
 	GLuint tessShader = initTessShader();
+	GLuint atmosphereShader = initAtmosphereShader();
 	
 	GLuint planeTex = loadTexture("shaders/tex2.png");
 	GLuint sphereTex = loadTexture("shaders/sky.jpg");
@@ -259,7 +305,7 @@ int main(int argc, char *argv[])
 	glCullFace(GL_BACK);
 	
 	
-	mat4 model;
+	mat4 model, atmo;
 	glViewport(0, 0, getWindowWidth(), getWindowHeight());
 	while(!glfwWindowShouldClose(window))
 	{
@@ -268,17 +314,20 @@ int main(int argc, char *argv[])
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
 		doMovement(deltaTime);
-		glClearColor(1.0, 1.0, 1.0, 1.0);
+		glClearColor(0.0, 0.0, 0.0, 1.0);
 		
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 		
 		model = multiplymat4(translate(0.0, -15.0, 0.0), scale(3.0));
 		draw(sphereVAO, lightShader, planet.vertexNumber, sphereTex, model);
+		
 		model = multiplymat4(scale(25.0), rotateX(90.0));
 		draw(planeVAO, lightShader, 6, planeTex, model);
 		
 		model = scale(10.0);
 		drawTess(sphereVAO, tessShader, planet.vertexNumber, model);
+		atmo = scale(10.25);
+		drawAtmoshere(sphereVAO, atmosphereShader, planet.vertexNumber, atmo);
 		
 		glfwPollEvents();
 		glfwSwapBuffers(window);
