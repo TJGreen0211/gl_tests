@@ -5,6 +5,13 @@ out vec4 FragColor;
 in vec3 gPatchDistance;
 in vec3 gTriDistance;
 
+in vec3 gE;
+in vec3 gN;
+in vec3 gL;
+in vec3 gH;
+
+uniform sampler2D texture1;
+
 float amplify(float d, float scale, float offset)
 {
     d = scale * d + offset;
@@ -16,6 +23,14 @@ float amplify(float d, float scale, float offset)
 
 void main()
 {
+	vec4 ambientProduct = vec4(0.2, 0.2, 0.2, 1.0)*vec4(0.2, 0.2, 1.0, 1.0);
+	vec4 diffuseProduct = vec4(1.0, 1.0, 1.0, 1.0)*vec4(0.8, 0.8, 0.8, 1.0);
+	vec4 specularProduct = vec4(1.0, 1.0, 1.0, 1.0)*vec4(10.5, 10.5, 10.5, 1.0);
+	float shininess = 25.0;
+	
+	//float Kd = max(dot(fL, fN), 0.0);
+	//float Ks = pow(max(dot(fN, fH), 0.0), shininess);
+
 	float d1 = min(min(gTriDistance.x, gTriDistance.y), gTriDistance.z);
     float d2 = min(min(gPatchDistance.x, gPatchDistance.y), gPatchDistance.z);
 	vec3 color = vec3(1.0, 0.5, 0.7);

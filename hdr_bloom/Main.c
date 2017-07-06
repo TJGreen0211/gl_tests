@@ -4,7 +4,7 @@
 
 int keys, actionPress, mousePosX, mousePosY;
 GLuint lightShader, hdrShader;
-GLuint textureColorBuffer;
+GLuint fboTexture1, fboTexture2;
 
 GLuint loadTexture(char const * path)
 {
@@ -287,8 +287,10 @@ GLuint initFramebuffer() {
 	GLuint fbo;
 	glGenFramebuffers(1, &fbo);
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-	textureColorBuffer = generateTexture();
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorBuffer, 0);
+	fboTexture1 = generateTexture();
+	fboTexture2 = generateTexture();
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexture1, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, fboTexture2, 0);
 	
 	GLuint rbo;
 	glGenRenderbuffers(1, &rbo);
@@ -296,6 +298,9 @@ GLuint initFramebuffer() {
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, getWindowWidth(), getWindowHeight());
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo);
+	
+	unsigned int attachments[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+	glDrawBuffers(2, attachments);
 	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		printf("ERROR: Framebuffer is not complete");
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -395,10 +400,10 @@ int main(int argc, char *argv[])
 		draw(cubeVAO, lightShader, 36, cubeTex, model);
 		
 		model = scale(25.0);
-		draw(screenVAO, hdrShader, 6, textureColorBuffer, model);
+		draw(screenVAO, hdrShader, 6, fboTexture1, model);
 		glUniform1i(glGetUniformLocation(hdrShader, "hdr"), 1);
 		model = multiplymat4(scale(25.0), rotateY(90.0));
-		draw(screenVAO, hdrShader, 6, textureColorBuffer, model);
+		draw(screenVAO, hdrShader, 6, fboTexture1, model);
 		glUniform1i(glGetUniformLocation(hdrShader, "hdr"), 0);
 		
 		//Screen
@@ -407,7 +412,7 @@ int main(int argc, char *argv[])
 	
 		glBindVertexArray(screenVAO);
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, textureColorBuffer);
+		glBindTexture(GL_TEXTURE_2D, fboTexture1);
 		glUniform1i(glGetUniformLocation(hdrShader, "texture1"), 0);
 		//glDrawArrays(GL_TRIANGLES, 0, 6);
 		glBindVertexArray(0);

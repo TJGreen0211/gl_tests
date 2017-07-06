@@ -4,7 +4,7 @@ const float toRadians = M_PI / 180.0;
 
 GLfloat Yaw = -90.0f;
 GLfloat Pitch = 0.0f;
-GLfloat MovementSpeed = 0.1f;
+GLfloat MovementSpeed = 1000.1f;
 GLfloat maxSpeed = 2000.0f;
 GLfloat MouseSensitivity = 0.6f;
 GLfloat Zoom = 45.0f;

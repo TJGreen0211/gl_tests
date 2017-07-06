@@ -15,7 +15,7 @@ void main()
 {   
 	vec4 ambientProduct = vec4(0.2, 0.2, 0.2, 1.0)*vec4(0.2, 0.2, 1.0, 1.0);
 	vec4 diffuseProduct = vec4(1.0, 1.0, 1.0, 1.0)*vec4(0.8, 0.8, 0.8, 1.0);
-	vec4 specularProduct = vec4(1.0, 1.0, 1.0, 1.0)*vec4(0.5, 0.5, 0.5, 1.0);
+	vec4 specularProduct = vec4(1.0, 1.0, 1.0, 1.0)*vec4(10.5, 10.5, 10.5, 1.0);
 	float shininess = 25.0;
 	
 	float Kd = max(dot(fL, fN), 0.0);
@@ -29,5 +29,6 @@ void main()
 	}
 
 	vec3 lighting = (ambient * (diffuse+specular));
-	FragColor = vec4(ambient+diffuse+specular, 1.0);
+	float gamma = 2.2;
+	FragColor = vec4(pow(ambient+diffuse+specular, vec3(1.0/gamma)), 1.0);
 }
