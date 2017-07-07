@@ -15,6 +15,7 @@
 #include "Window.h"
 #include "SOIL/SOIL.h"
 #include "Sphere.h"
+#include "Geometry.h"
 
 #define BUFFER_OFFSET(offset) ((char*)NULL+(offset))
 

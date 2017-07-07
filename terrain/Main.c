@@ -4,19 +4,31 @@
 
 float zNear = 0.5, zFar = 100000.0;
 int mousePosX, mousePosY, actionPress, keys;
+GLuint depthMap;
 struct sphere planet;
+struct ring planetRing;
 
-GLuint loadTexture(char const * path)
+GLuint loadTexture(char const * path, int alphaFlag)
 {
     //Generate texture ID and load texture data 
     GLuint textureID;
     glGenTextures(1, &textureID);
     int width, height;
-    unsigned char* image = SOIL_load_image(path, &width, &height, 0, SOIL_LOAD_RGB);
-    // Assign texture to ID
-    glBindTexture(GL_TEXTURE_2D, textureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
-    glGenerateMipmap(GL_TEXTURE_2D);
+    unsigned char* image;
+    
+    if(alphaFlag == 1) {
+    	image = SOIL_load_image(path, &width, &height, 0, SOIL_LOAD_RGBA);
+    	glBindTexture(GL_TEXTURE_2D, textureID);
+    	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
+    	glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else {
+    	image = SOIL_load_image(path, &width, &height, 0, SOIL_LOAD_RGB);
+    	// Assign texture to ID
+    	glBindTexture(GL_TEXTURE_2D, textureID);
+    	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+    	glGenerateMipmap(GL_TEXTURE_2D);
+    }
 
     // Parameters
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -26,6 +38,33 @@ GLuint loadTexture(char const * path)
     glBindTexture(GL_TEXTURE_2D, 0);
     SOIL_free_image_data(image);
     return textureID;
+}
+
+GLuint generateTextureAttachment(int depth, int stencil) {
+	GLuint textureID;
+	GLenum attachment_type;
+	if(!depth && !stencil)
+		attachment_type = GL_RGB;
+	else if(depth && !stencil)
+		attachment_type = GL_DEPTH_COMPONENT;
+	else if(!depth && stencil)
+		attachment_type = GL_STENCIL_INDEX;
+		
+	glGenTextures(1, &textureID);
+	glBindTexture(GL_TEXTURE_2D, textureID);
+	if(!depth && !stencil)
+		glTexImage2D(GL_TEXTURE_2D, 0, attachment_type, getWindowWidth(), getWindowHeight(), 0, attachment_type, GL_UNSIGNED_BYTE, NULL);
+	else if(depth && !stencil)
+		glTexImage2D(GL_TEXTURE_2D, 0, attachment_type, getWindowWidth(), getWindowHeight(), 0, attachment_type, GL_FLOAT, NULL);
+		
+	else
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, getWindowWidth(), getWindowHeight(), 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST ); 
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);//GL_CLAMP_TO_BORDER
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);//GL_CLAMP_TO_BORDER
+    glBindTexture(GL_TEXTURE_2D, 0);
+	return textureID;
 }
 
 void createShader(GLuint *shader, char *vert, char *frag)
@@ -52,6 +91,20 @@ GLuint initAtmosphereShader() {
 	return shader;
 }
 
+GLuint initLightingShader() {
+	GLuint shader;
+	createShader(&shader, "shaders/light.vert",
+		"shaders/light.frag");
+	return shader;
+}
+
+GLuint initDepthShader() {
+	GLuint shader;
+	createShader(&shader, "shaders/light.vert",
+		"shaders/light.frag");
+	return shader;
+}
+
 GLuint initTessShader() {
 	GLuint shader;
 	GLuint vertShader = LoadShader("shaders/tess.vert", GL_VERTEX_SHADER);
@@ -68,21 +121,6 @@ GLuint initTessShader() {
 	glLinkProgram(shader);
 	
 	return shader;
-}
-
-vec3 *generateSmoothNormals(vec3 vna[], vec3 *vertices, vec3 *normals, int size) {
-	vec3 vn;
-	for(int i = 0; i < size; i++) {
-		vec3 tempvn = {0.0, 0.0, 0.0};
-		vn = vertices[i];
-		for(int j = 0; j < size; j++) {
-			if(vn.x == vertices[j].x && vn.y == vertices[j].y && vn.z == vertices[j].z) {
-				tempvn = plusequalvec3(tempvn, normals[j]);
-			}
-		}
-		vna[i] = normalizevec3(tempvn);
-	}
-	return vna;
 }
 
 vec3 *generateNormals(vec3 normals[], float *vertices, int size) {
@@ -129,6 +167,23 @@ GLuint initBuffers(vec3 *vertices, int vertSize, vec3 *normals, int normSize, ve
 	return vao;
 }
 
+GLuint initDepthBuffer() {
+	GLuint fbo;
+	glGenFramebuffers(1, &fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	depthMap = generateTextureAttachment(1, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+	GLuint status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	  if(status != GL_FRAMEBUFFER_COMPLETE)
+		  printf("GL_FRAMEBUFFER_COMPLETE failed, CANNOT use FBO\n");
+	
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	
+	return fbo;
+}
+
 GLuint initSphere() {
 	planet = tetrahedron(5, &planet);
 	GLuint vao;
@@ -145,53 +200,11 @@ GLuint initSphere() {
 	return vao;
 }
 
-GLuint initFloor() {
+GLuint initRing() {
 	GLuint vao;
-	float vertices[] = {
-		-1.0f, -1.0f, 1.0f,
-        -1.0f,  1.0f, 1.0f,
-         1.0f,  1.0f, 1.0f,
-         1.0f,  1.0f, 1.0f,
-         1.0f, -1.0f, 1.0f,
-        -1.0f, -1.0f, 1.0f
-	};
-	
-	float texCoords[] = {
-		0.0f, 0.0f,
-    	0.0f, 1.0f,
-		1.0f, 1.0f,
-
-        1.0f, 1.0f,
-        1.0f, 0.0f,
-        0.0f, 0.0f
-	};
-	
-	int numVertices = (sizeof(vertices)/sizeof(vertices[0]));
-    int numTexCoords = (sizeof(texCoords)/sizeof(texCoords[0]));
-	int vecSize = numVertices/3;
-	int texSize = numTexCoords/2;
-    
-    vec3 vertArray[vecSize];
-    vec3 normArray[vecSize];
-    vec2 texArray[texSize];
-    int c = 0;
-    for(int i = 0; i < numVertices; i+=3) {
-    	vertArray[c].x = vertices[i];
-    	vertArray[c].y = vertices[i+1];
-    	vertArray[c].z = vertices[i+2];
-    	c++;
-    }
-    c = 0;
-    for(int i = 0; i < numTexCoords; i+=2) {
-    	texArray[c].x = texCoords[i];
-    	texArray[c].y = texCoords[i+1];
-    	c++;
-    }
-    *normArray = *generateNormals(normArray, vertices, numVertices);
-    vec3 vna[vecSize];
-	*vna = *generateSmoothNormals(vna, vertArray, normArray, vecSize);
-    vao = initBuffers(vertArray, sizeof(vertices), vna, sizeof(vertices), texArray, sizeof(texCoords));    
-    return vao;
+	planetRing = createRing(1, 1.0, 2.0);
+	vao = initBuffers(planetRing.points, planetRing.size, planetRing.normals, planetRing.nsize, planetRing.texCoords, planetRing.texsize);
+	return vao;
 }
 
 vec4 getCameraPosition(mat4 position) {
@@ -267,6 +280,27 @@ void drawTess(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, v
 	glBindVertexArray(0);
 }
 
+void draw(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, vec3 position) {
+	glDisable(GL_CULL_FACE);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glUseProgram(shader);
+	initMVP(shader, m, getViewMatrix());
+	glBindVertexArray(vao);
+	mat4 positionMatrix = translatevec3(position);
+	vec4 camPosition = getCameraPosition(positionMatrix);
+	
+	glUniform3f(glGetUniformLocation(shader, "cameraPos"), camPosition.x, camPosition.y, camPosition.z);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glUniform1i(glGetUniformLocation(shader, "texture1"), 0);
+	glDrawArrays(GL_TRIANGLES, 0, vertices);
+	glBindVertexArray(0);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+	glDisable(GL_BLEND);
+}
+
 void doMovement(float deltaTime) {
 	float deltaSpeed = 1.0;
 	if(keys == GLFW_KEY_W && actionPress == GLFW_PRESS)
@@ -290,9 +324,14 @@ int main(int argc, char *argv[])
 	GLuint tessShader = initTessShader();
 	GLuint skyShader = initSkyShader();
 	GLuint atmosphereShader = initAtmosphereShader();
+	GLuint ringShader = initLightingShader();
+	GLuint depthShader = initDepthShader();
 	
-	GLuint earthTex = loadTexture("shaders/earth.jpg");
+	GLuint depthbuffer = initDepthBuffer();
+	GLuint earthTex = loadTexture("shaders/earth.jpg", 0);
+	GLuint ringTex = loadTexture("shaders/ring.png", 1);
 	GLuint sphereVAO = initSphere();
+	GLuint ringVAO = initRing();
 	
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
@@ -314,8 +353,19 @@ int main(int argc, char *argv[])
 		
 		vec3 translation = {6500.0, 0.0, 0.0};
 		float fScale = 6371.0;
-		float fScaleFactor = 1.25;
-			
+		float fScaleFactor = 1.025;
+		
+		glBindFramebuffer(GL_FRAMEBUFFER, depthbuffer);
+			glClear(GL_DEPTH_BUFFER_BIT);
+			model = multiplymat4(multiplymat4(translatevec3(translation), rotateX(65.0)), scale(fScale*1.5));
+			draw(ringVAO, depthShader, planetRing.vertexNumber, ringTex, model, translation);
+			model = multiplymat4(translatevec3(translation), scale(fScale));
+			draw(sphereVAO, depthShader, planet.vertexNumber, earthTex, model, translation);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		
+		
+		model = multiplymat4(multiplymat4(translatevec3(translation), rotateX(65.0)), scale(fScale*1.5));
+		draw(ringVAO, ringShader, planetRing.vertexNumber, ringTex, model, translation);
 		model = multiplymat4(translatevec3(translation), scale(fScale));
 		drawTess(sphereVAO, tessShader, planet.vertexNumber, earthTex, model, translation);
 		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));

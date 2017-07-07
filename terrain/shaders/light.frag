@@ -20,15 +20,16 @@ void main()
 	
 	float Kd = max(dot(fL, fN), 0.0);
 	float Ks = pow(max(dot(fN, fH), 0.0), shininess);
-	vec3 color = vec3(texture(texture1, fTexCoords));
-	vec3 ambient = ambientProduct.xyz * color;
-	vec3 diffuse = Kd * diffuseProduct.xyz * color;
-	vec3 specular = Ks * specularProduct.xyz;
+	//vec3 color = vec3(texture(texture1, fTexCoords));
+	vec4 color = vec4(texture(texture1, fTexCoords)).rgba;
+	vec4 ambient = vec4(ambientProduct.xyz, 1.0) * color;
+	vec4 diffuse = vec4(Kd * diffuseProduct.xyz, 1.0) * color;
+	vec4 specular = vec4(Ks * specularProduct.xyz, 1.0);
 	if(dot(fL, fN) < 0.0) {
-		specular = vec3(0.0, 0.0, 0.0);
+		specular = vec4(0.0, 0.0, 0.0, 1.0);
 	}
 
-	vec3 lighting = (ambient * (diffuse+specular));
+	//vec3 lighting = (ambient * (diffuse+specular));
 	float gamma = 2.2;
-	FragColor = vec4(pow(ambient+diffuse+specular, vec3(1.0/gamma)), 1.0);
+	FragColor = vec4(pow(ambient+diffuse+specular, vec4(1.0/gamma)));
 }

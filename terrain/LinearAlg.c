@@ -39,6 +39,37 @@ mat2 ZERO_MATRIX_2 = {{
 	{0.0, 0.0}
 }};
 
+float quatLength(quaternion q) {
+	return sqrt(q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w);
+}
+
+quaternion quatNormalize(quaternion q) {
+	float len = quatLength(q);
+	q.x /= len;
+	q.y /= len;
+	q.z /= len;
+	q.w /= len;
+	
+	return q;
+}
+
+quaternion quatConjugate(quaternion q) {
+	q.x = -q.x;
+	q.y = -q.y;
+	q.z = -q.z;
+	q.w = -q.w;
+	return q;
+}
+
+quaternion quatMultiply(quaternion q, quaternion u) {
+	quaternion c;
+	c.x = q.w*u.x + q.x*u.w + q.y*u.z - q.z*u.y;
+	c.y = q.w*u.y - q.x*u.z + q.y*u.w + q.z*u.x;
+	c.z = q.w*u.z + q.x*u.y - q.y*u.x + q.z*u.w;
+	c.w = q.w*u.w - q.x*u.x - q.y*u.y - q.z*u.z;
+	return c;
+}
+
 vec4 addvec4(vec4 v, vec4 u)
 {
 	vec4 temp = {v.x + u.x, v.y + u.y, v.z + u.z, v.w + u.w,};

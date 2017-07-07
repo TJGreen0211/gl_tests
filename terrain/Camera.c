@@ -23,8 +23,9 @@ mat4 getViewMatrix()
 	rx = rotateX(Pitch);
 	ry = rotateY(Yaw);
 	rxry = multiplymat4(rx, ry);
-	tr = translate(Position.x+Front.x, 0.0, Position.z+Front.z);
+	tr = translate(Position.x+Front.x, Position.y+Front.y, Position.z+Front.z);
 	return multiplymat4(rxry, tr);//lookAt(Position,addvec3(Position,Front), Up);//
+	//return tr;
 }
 
 mat4 getViewPosition()
@@ -44,6 +45,8 @@ void updateCameraVectors()
 	front.y = sin(toRadians * Pitch);
 	front.z = sin(toRadians * Yaw) * cos(toRadians * Pitch);
 	Front = normalizevec3(front);
+	
+	printf("%f, %f, %f\n", Front.x, Front.y, Front.z);
 	
 	Right = normalizevec3(crossvec3(Front, Up));
 	Up = normalizevec3(crossvec3(Right, Front));
@@ -65,6 +68,27 @@ void processKeyboard(enum Camera_Movement direction, GLfloat deltaTime, GLfloat 
         Position = plusequalvec3(Position, scalarMultvec3(Front, velocity));
 }
 
+void rotateCamera(float angle, float x, float y, float z) {
+	quaternion temp, qView, result;
+	
+	temp.x = x * sin(angle/2);
+	temp.y = y * sin(angle/2);
+	temp.z = z * sin(angle/2);
+	temp.w = cos(angle/2);
+	
+	qView.x = Front.x;
+	qView.y = Front.y;
+	qView.y = Front.z;
+	qView.w = 0.0;
+	
+	result = quatMultiply(quatMultiply(temp, qView), quatConjugate(temp));
+	
+	Front.x = result.x;
+	Front.y = result.y;
+	Front.z = result.z;
+	
+}
+
 int constrainPitch;
 void processMouseMovement(GLfloat xpos, GLfloat ypos)
 {
@@ -77,6 +101,31 @@ void processMouseMovement(GLfloat xpos, GLfloat ypos)
 	
 	Yaw += diffx;
 	Pitch += diffy;
+	
+	vec3 mouseDirection = {0.0, 0.0, 0.0};
+	int middleX = getWindowWidth()/2;
+	int middleY = getWindowHeight()/2;
+	
+	double currentRotX = 0.0;
+	
+	mouseDirection.x = (middleX - xpos)*MouseSensitivity;
+	mouseDirection.y = (middleY - ypos)*MouseSensitivity;
+	
+	currentRotX += mouseDirection.y;
+	
+	if(currentRotX > 1) {
+		currentRotX = 1;
+	}
+	if(currentRotX < -1) {
+		currentRotX = -1;
+	}
+	else {
+		vec3 sub = {Front.x - Position.x, Front.y - Position.y, Front.z - Position.z};
+		vec3 axis = normalizevec3(crossvec3(sub, Up));
+		
+		//rotateCamera(Pitch, sub.x, sub.y, sub.z);
+		//rotateCamera(Yaw, 0.0, 1.0, 0.0);
+	}
 	
 	//if(constrainPitch == 1)
 	//{

@@ -21,7 +21,7 @@ void main()
 	vec4 ray = normalize(model*vPosition - vec4(cameraPos, 1.0));
 	
 	mat3 normalMatrix = transpose(inverse(mat3(model)));
-	vec4 lightPos = vec4(50.0, -100.0, 0.0, 1.0);
+	vec4 lightPos = vec4(50.0, -15000.0, 0.0, 1.0);
 	vec3 lightDir = normalize(vPosition*model - lightPos).xyz;
 	fE = normalize(vPosition*model).xyz;
 	fN = normalize(vNormal*normalMatrix);
