@@ -2,8 +2,10 @@
 
 out vec4 FragColor;
 
+//layout (location = 2) in vec2 vTexCoords;
 in vec3 gPatchDistance;
 in vec3 gTriDistance;
+in vec2 fTexCoords;
 
 in vec3 gE;
 in vec3 gN;
@@ -33,8 +35,9 @@ void main()
 
 	float d1 = min(min(gTriDistance.x, gTriDistance.y), gTriDistance.z);
     float d2 = min(min(gPatchDistance.x, gPatchDistance.y), gPatchDistance.z);
-	vec3 color = vec3(1.0, 0.5, 0.7);
+	vec3 color = vec3(0.2, 0.6, 0.4);
 	color = amplify(d1, 40, -0.5) * amplify(d2, 60, -0.5) * color;
+	//vec3 texColor = vec3(texture(texture1, fTexCoords));
 
     FragColor = vec4(color, 1.0);
 }

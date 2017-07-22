@@ -4,7 +4,7 @@ const float toRadians = M_PI / 180.0;
 
 GLfloat Yaw = -90.0f;
 GLfloat Pitch = 0.0f;
-GLfloat MovementSpeed = 1000.1f;
+GLfloat MovementSpeed = 10.1f;
 GLfloat maxSpeed = 2000.0f;
 GLfloat MouseSensitivity = 0.6f;
 GLfloat Zoom = 45.0f;
@@ -23,7 +23,7 @@ mat4 getViewMatrix()
 	rx = rotateX(Pitch);
 	ry = rotateY(Yaw);
 	rxry = multiplymat4(rx, ry);
-	tr = translate(Position.x+Front.x, Position.y+Front.y, Position.z+Front.z);
+	tr = translate(Position.x+Front.x, 0.0, Position.z+Front.z);
 	return multiplymat4(rxry, tr);//lookAt(Position,addvec3(Position,Front), Up);//
 	//return tr;
 }
@@ -46,7 +46,7 @@ void updateCameraVectors()
 	front.z = sin(toRadians * Yaw) * cos(toRadians * Pitch);
 	Front = normalizevec3(front);
 	
-	printf("%f, %f, %f\n", Front.x, Front.y, Front.z);
+	//printf("%f, %f, %f\n", Front.x, Front.y, Front.z);
 	
 	Right = normalizevec3(crossvec3(Front, Up));
 	Up = normalizevec3(crossvec3(Right, Front));
@@ -120,8 +120,8 @@ void processMouseMovement(GLfloat xpos, GLfloat ypos)
 		currentRotX = -1;
 	}
 	else {
-		vec3 sub = {Front.x - Position.x, Front.y - Position.y, Front.z - Position.z};
-		vec3 axis = normalizevec3(crossvec3(sub, Up));
+		//vec3 sub = {Front.x - Position.x, Front.y - Position.y, Front.z - Position.z};
+		//vec3 axis = normalizevec3(crossvec3(sub, Up));
 		
 		//rotateCamera(Pitch, sub.x, sub.y, sub.z);
 		//rotateCamera(Yaw, 0.0, 1.0, 0.0);
