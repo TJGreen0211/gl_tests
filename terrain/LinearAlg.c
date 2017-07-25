@@ -54,21 +54,49 @@ quaternion quatNormalize(quaternion q) {
 }
 
 quaternion quatConjugate(quaternion q) {
+	q.w = q.w;
 	q.x = -q.x;
 	q.y = -q.y;
 	q.z = -q.z;
-	q.w = -q.w;
 	return q;
 }
 
 quaternion quatMultiply(quaternion q, quaternion u) {
 	quaternion c;
+	c.w = q.w*u.w - q.x*u.x - q.y*u.y - q.z*u.z;
 	c.x = q.w*u.x + q.x*u.w + q.y*u.z - q.z*u.y;
 	c.y = q.w*u.y - q.x*u.z + q.y*u.w + q.z*u.x;
 	c.z = q.w*u.z + q.x*u.y - q.y*u.x + q.z*u.w;
-	c.w = q.w*u.w - q.x*u.x - q.y*u.y - q.z*u.z;
 	return c;
 }
+
+mat4 quaternionToRotation(quaternion q) {
+	mat4 rotation = {
+		{
+		{1.0-2.0*(q.y*q.y - q.z*q.z), 	  2.0*(q.x*q.y - q.z*q.w), 	   2.0*(q.x*q.z + q.y*q.w), 0.0},
+		{	 2.0*(q.x*q.y + q.z*q.w), 1.0-2.0*(q.x*q.x - q.z*q.z), 	   2.0*(q.y*q.z + q.x*q.w), 0.0},
+		{    2.0*(q.x*q.z - q.y*q.w),     2.0*(q.y*q.z - q.x*q.w), 1.0-2.0*(q.x*q.x - q.y*q.y), 0.0},
+		{	 0.0, 						  0.0, 					   0.0, 						1.0}
+		}
+	};
+	return rotation;
+}
+
+quaternion angleAxis(float angle, vec3 axis, vec3 point) {
+	quaternion r, p;
+	r.w = cos(angle/2.0);
+	r.x = axis.x * sin(angle/2.0);
+	r.y = axis.y * sin(angle/2.0);
+	r.z = axis.z * sin(angle/2.0);
+	
+	p.w = 0.0;
+	p.x = point.x;
+	p.y = point.y;
+	p.z = point.z;
+	
+	return quatMultiply(quatMultiply(r, p), quatConjugate(r));
+}
+
 
 vec4 addvec4(vec4 v, vec4 u)
 {

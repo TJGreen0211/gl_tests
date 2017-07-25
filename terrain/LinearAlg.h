@@ -31,13 +31,15 @@ typedef struct vec2 {
 } vec2;
 
 typedef struct quaternion {
-	float x, y, z, w;
+	float w, x, y, z;
 } quaternion;
 
 float quatLength(quaternion q);
 quaternion quatNormalize(quaternion q);
 quaternion quatConjugate(quaternion q);
 quaternion quatMultiply(quaternion q, quaternion u);
+mat4 quaternionToRotation(quaternion q);
+quaternion angleAxis(float angle, vec3 axis, vec3 point);
 
 vec4 addvec4(vec4 v, vec4 u);
 vec3 addvec3(vec3 v, vec3 u);

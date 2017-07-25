@@ -17,6 +17,7 @@
 #include "Sphere.h"
 #include "Geometry.h"
 #include "SimplexNoise.h"
+#include "Obj.h"
 
 #define BUFFER_OFFSET(offset) ((char*)NULL+(offset))
 

@@ -7,6 +7,7 @@ float zNear = 0.5, zFar = 100000.0;
 int mousePosX, mousePosY, actionPress, keys;
 GLuint depthMap, textureColorBuffer;
 struct sphere planet;
+struct obj object;
 struct ring planetRing;
 
 GLuint loadTexture(char const * path, int alphaFlag)
@@ -324,6 +325,22 @@ GLuint initNoise() {
 	
 }
 
+GLuint initObjectBuffer() {
+	GLuint vao;
+	object = ObjLoadModel("/Users/tjgreen/Documents/OpenGL/gl_tests/terrain/assets/chimera.obj");
+	vec3 vna[object.vertexNumber];
+	vec2 texCoords[object.vertexNumber];
+	*vna = *generateSmoothNormals(vna, object.points, object.normals, object.vertexNumber);
+	
+	for(int i = 0; i < object.vertexNumber; i++) {
+    	texCoords[i].x = 1.0;
+    	texCoords[i].y = 0.0;
+    }
+    vao = initBuffers(object.points, object.size, object.normals, object.nsize, texCoords, sizeof(texCoords[0])*object.vertexNumber);
+	
+	return vao;
+}
+
 GLuint initSphere() {
 	planet = tetrahedron(5, &planet);
 	GLuint vao;
@@ -601,6 +618,7 @@ int main(int argc, char *argv[])
 	GLuint ringTex = loadTexture("shaders/ring.png", 1);
 	GLuint sphereVAO = initSphere();
 	GLuint ringVAO = initRing();
+	GLuint objectVAO = initObjectBuffer();
 	
 	GLuint framebuffer = initFramebuffer();
 	GLuint quadVAO = initQuad();
@@ -659,6 +677,9 @@ int main(int argc, char *argv[])
 		
 		model = scale(25.0);
 		draw(quadVAO, fboShader, 6, textureColorBuffer, model, translation);
+		
+		model = multiplymat4(translate(-400.0, -100.0, 0.0), scale(1000.0));
+		draw(objectVAO, ringShader, object.vertexNumber, earthTex, model, translation);
 		
 		glfwPollEvents();
 		glfwSwapBuffers(window);
