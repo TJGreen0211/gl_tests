@@ -69,13 +69,37 @@ quaternion quatMultiply(quaternion q, quaternion u) {
 	c.z = q.w*u.z + q.x*u.y - q.y*u.x + q.z*u.w;
 	return c;
 }
+/*
+tmat3x3<T, P> Result(T(1));
+		T qxx(q.x * q.x);
+		T qyy(q.y * q.y);
+		T qzz(q.z * q.z);
+		T qxz(q.x * q.z);
+		T qxy(q.x * q.y);
+		T qyz(q.y * q.z);
+		T qwx(q.w * q.x);
+		T qwy(q.w * q.y);
+		T qwz(q.w * q.z);
+
+		Result[0][0] = T(1) - T(2) * (qyy +  qzz);
+		Result[0][1] = T(2) * (qxy + qwz);
+		Result[0][2] = T(2) * (qxz - qwy);
+
+		Result[1][0] = T(2) * (qxy - qwz);
+		Result[1][1] = T(1) - T(2) * (qxx +  qzz);
+		Result[1][2] = T(2) * (qyz + qwx);
+
+		Result[2][0] = T(2) * (qxz + qwy);
+		Result[2][1] = T(2) * (qyz - qwx);
+		Result[2][2] = T(1) - T(2) * (qxx +  qyy);
+		return Result;*/
 
 mat4 quaternionToRotation(quaternion q) {
 	mat4 rotation = {
 		{
-		{1.0-2.0*(q.y*q.y - q.z*q.z), 	  2.0*(q.x*q.y - q.z*q.w), 	   2.0*(q.x*q.z + q.y*q.w), 0.0},
-		{	 2.0*(q.x*q.y + q.z*q.w), 1.0-2.0*(q.x*q.x - q.z*q.z), 	   2.0*(q.y*q.z + q.x*q.w), 0.0},
-		{    2.0*(q.x*q.z - q.y*q.w),     2.0*(q.y*q.z - q.x*q.w), 1.0-2.0*(q.x*q.x - q.y*q.y), 0.0},
+		{1.0-2.0*(q.y*q.y + q.z*q.z), 	  2.0*(q.x*q.y + q.z*q.w), 	   2.0*(q.x*q.z - q.y*q.w), 0.0},
+		{	 2.0*(q.x*q.y - q.z*q.w), 1.0-2.0*(q.x*q.x + q.z*q.z), 	   2.0*(q.y*q.z + q.x*q.w), 0.0},
+		{    2.0*(q.x*q.z + q.y*q.w),     2.0*(q.y*q.z - q.x*q.w), 1.0-2.0*(q.x*q.x + q.y*q.y), 0.0},
 		{	 0.0, 						  0.0, 					   0.0, 						1.0}
 		}
 	};

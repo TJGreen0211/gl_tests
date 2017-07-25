@@ -13,21 +13,16 @@ float xpos = 0, ypos = 0, zpos = 0;
 float lastx, lasty;
 
 mat4 tr, ry, rx, rxry;
-vec3 Position = {10.0, -10.0, -10.0};
-vec3 Up = {0.0, 1.0, 0.0};
+vec3 Position = {0.0, 1.0, 0.0};
+vec3 Up = {0.0, 0.0, 1.0};
 vec3 Front = {0.0, 0.0, -1.0};
 vec3 Right = {1.0, 0.0, 0.0};
 
-mat4 rotm;
-
 mat4 getViewMatrix()
 {	
-	rx = rotateX(Pitch);
-	ry = rotateY(Yaw);
 	rxry = multiplymat4(rx, ry);
-	tr = translate(Position.x, Position.y, Position.z);
-	return multiplymat4(rxry, tr);//lookAt(Position,addvec3(Position,Front), Up);//
-	//return tr;
+	tr = translate(Position.x, Position.y, Position.z);	
+	return multiplymat4(rxry, tr);
 }
 
 mat4 getViewPosition()
@@ -42,16 +37,20 @@ mat4 getViewRotation()
 
 void updateCameraVectors()
 {
-	vec3 front;
-	front.x = cos(toRadians * Yaw) * cos(toRadians * Pitch);
-	front.y = sin(toRadians * Pitch);
-	front.z = sin(toRadians * Yaw) * cos(toRadians * Pitch);
-	Front = normalizevec3(front);
+	Front.x = rxry.m[2][0];
+	Front.y = rxry.m[2][1];
+	Front.z = rxry.m[2][2];
+	Front = normalizevec3(Front);
 	
-	//printf("%f, %f, %f\n", Front.x, Front.y, Front.z);
+	Right.x = rxry.m[0][0];
+	Right.y = rxry.m[0][1];
+	Right.z = rxry.m[0][2];
+	Right = normalizevec3(Right);
 	
-	//Right = normalizevec3(crossvec3(Front, Up));
-	//Up = normalizevec3(crossvec3(Front, Right));
+	Up.x = rxry.m[1][0];
+	Up.y = rxry.m[1][1];
+	Up.z = rxry.m[1][2];
+	Up = normalizevec3(Up);
 }
 
 void processKeyboard(enum Camera_Movement direction, GLfloat deltaTime, GLfloat deltaSpeed)
@@ -85,18 +84,6 @@ void processMouseMovement(GLfloat xpos, GLfloat ypos)
 	Pitch += diffy;
 	
 	//printf("%f, %f", Yaw, Pitch);
-	
-	vec3 mouseDirection = {0.0, 0.0, 0.0};
-	int middleX = getWindowWidth()/2;
-	int middleY = getWindowHeight()/2;
-	
-	double currentRotX = 0.0;
-	
-	mouseDirection.x = (middleX - xpos)*MouseSensitivity;
-	mouseDirection.y = (middleY - ypos)*MouseSensitivity;
-	
-	currentRotX += mouseDirection.y;
-	
 	/*if(currentRotX > 1) {
 		currentRotX = 1;
 	}
@@ -104,17 +91,6 @@ void processMouseMovement(GLfloat xpos, GLfloat ypos)
 		currentRotX = -1;
 	}
 	else {*/
-		//vec3 sub = {Front.x - Position.x, Front.y - Position.y, Front.z - Position.z};
-		//vec3 axis = normalizevec3(crossvec3(sub, Up));
-		
-	
-	//vec3 test = {0.0, 1.0, 0.0};
-	//one = rotateCamera(90.0*toRadians, test);
-	
-	//float theta = 2.0*atan2(sqrt(one.x*one.x+one.y*one.y+one.z*one.z), one.w);
-	//printf("one %f, %f, %f\n", one.x, one.y, one.z);
-	
-	//printf("theta: %f, thetar: %f, Pitch: %f, Pitchr: %f\n", theta, theta*toRadians, Pitch, Pitch*toRadians);
 	
 		
 	//}
@@ -126,20 +102,21 @@ void processMouseMovement(GLfloat xpos, GLfloat ypos)
 		if(Pitch < -89.0)
 			Pitch = -89.0f;
 	//}
-	//updateCameraVectors();
 	//Front = normalizevec3(front);
+	vec3 xAxis = {1.0, 0.0, 0.0};
+	vec3 yAxis = {0.0, 1.0, 0.0};
+	vec3 zAxis = {0.0, 0.0, 1.0};
 	
-	vec3 axis = {0.0, 1.0, 0.0};
-	vec3 point = {1.0, 0.0, 0.0};
-	quaternion test = angleAxis(90.0*toRadians, axis, point);
-	printf("quaternion: %f, %f, %f, %f\n", test.w, test.x, test.y, test.z);
+	quaternion one = angleAxis(Pitch*toRadians, xAxis, zAxis);
+	quaternion two = angleAxis(-Yaw*toRadians, yAxis, zAxis);
+	//printf("quaternion: %f, %f, %f, %f\n", one.w, one.x, one.y, one.z);
 	
-	//quaternion q = { 0.707107, 0.000000, 0.707107, 0.000000};
-	//quaternion conjq = quatConjugate(q);
-	//printf("quaternion Conjugate: %f, %f, %f, %f\n", conjq.w, conjq.x, conjq.y, conjq.z);
+	quaternion three = quatMultiply(one, two);
 	
-	//Right = normalizevec3(crossvec3(Front, Up));
-	//Up = normalizevec3(crossvec3(Right, Front));
+	rx = quaternionToRotation(one);
+	ry = quaternionToRotation(two);
+	
+	updateCameraVectors();
 }
 
 float processMouseScroll(GLfloat yoffset, float zoom)
