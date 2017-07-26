@@ -69,36 +69,41 @@ void processKeyboard(enum Camera_Movement direction, GLfloat deltaTime, GLfloat 
 }
 
 int constrainPitch;
-void processMouseMovement(GLfloat xpos, GLfloat ypos)
+void processMouseMovement(GLfloat xpos, GLfloat ypos, int resetFlag)
 {
-	//vec3 front;
-	int diffx = xpos - lastx;
-	int diffy = ypos - lasty;
-	lastx = xpos;
-	lasty = ypos;
-	diffx *= MouseSensitivity;
-	diffy *= MouseSensitivity;
+	if(resetFlag) {
+		lastx = xpos;
+		lasty = ypos;
+	}
+	else {
+		int diffx = xpos - lastx;
+		int diffy = ypos - lasty;
+		lastx = xpos;
+		lasty = ypos;
+		diffx *= MouseSensitivity;
+		diffy *= MouseSensitivity;
 	
-	Yaw += diffx;
-	Pitch += diffy;
+		Yaw += diffx;
+		Pitch += diffy;
 	
-	if(Pitch > 89.0)
-		Pitch = 89.0f;
-	if(Pitch < -89.0)
-		Pitch = -89.0f;
+		if(Pitch > 89.0)
+			Pitch = 89.0f;
+		if(Pitch < -89.0)
+			Pitch = -89.0f;
 			
-	vec3 xAxis = {1.0, 0.0, 0.0};
-	vec3 yAxis = {0.0, 1.0, 0.0};
-	vec3 zAxis = {0.0, 0.0, 1.0};
+		vec3 xAxis = {1.0, 0.0, 0.0};
+		vec3 yAxis = {0.0, 1.0, 0.0};
+		vec3 zAxis = {0.0, 0.0, 1.0};
 	
-	quaternion one = angleAxis(Pitch*toRadians, xAxis, zAxis);
-	quaternion two = angleAxis(-Yaw*toRadians, yAxis, zAxis);
-	//printf("quaternion: %f, %f, %f, %f\n", one.w, one.x, one.y, one.z);
+		quaternion one = angleAxis(Pitch*toRadians, xAxis, zAxis);
+		quaternion two = angleAxis(-Yaw*toRadians, yAxis, zAxis);
+		//printf("quaternion: %f, %f, %f, %f\n", one.w, one.x, one.y, one.z);
 	
-	rx = quaternionToRotation(one);
-	ry = quaternionToRotation(two);
+		rx = quaternionToRotation(one);
+		ry = quaternionToRotation(two);
 	
-	updateCameraVectors();
+		updateCameraVectors();
+	}
 }
 
 float processMouseScroll(GLfloat yoffset, float zoom)
