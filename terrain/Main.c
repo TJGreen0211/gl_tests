@@ -606,8 +606,8 @@ int main(int argc, char *argv[])
 	GLFWwindow *window = setupGLFW();
 
 	GLuint tessShader = initTessShader();
-	//GLuint skyShader = initSkyShader();
-	//GLuint atmosphereShader = initAtmosphereShader();
+	GLuint skyShader = initSkyShader();
+	GLuint atmosphereShader = initAtmosphereShader();
 	GLuint ringShader = initLightingShader();
 	//GLuint depthShader = initDepthShader();
 	GLuint fboShader = initFramebufferShader();
@@ -672,8 +672,8 @@ int main(int argc, char *argv[])
 		draw(ringVAO, ringShader, planetRing.vertexNumber, ringTex, model, translation);
 		model = multiplymat4(translatevec3(translation), scale(fScale));
 		drawTess(sphereVAO, tessShader, planet.vertexNumber, textureColorBuffer, model, translation);
-		//atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
-		//drawAtmoshere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor);
+		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
+		drawAtmoshere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor);
 		
 		model = scale(25.0);
 		draw(quadVAO, fboShader, 6, textureColorBuffer, model, translation);
@@ -718,7 +718,10 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
 	int state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
 	if (state == GLFW_PRESS)
 	{
-		processMouseMovement(xpos, ypos);
+		processMouseMovement(xpos, ypos, 0);
+	}
+	else {
+		processMouseMovement(xpos, ypos, 1);
 	}
 	mousePosX = xpos;
 	mousePosY = ypos;
