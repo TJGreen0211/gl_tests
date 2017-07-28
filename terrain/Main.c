@@ -327,7 +327,7 @@ GLuint initNoise() {
 
 GLuint initObjectBuffer() {
 	GLuint vao;
-	object = ObjLoadModel("/Users/tjgreen/Documents/OpenGL/gl_tests/terrain/assets/chimera.obj");
+	object = ObjLoadModel("/Users/tjgreen/Documents/OpenGL/gl_tests/terrain/assets/ferox.obj");
 	vec3 vna[object.vertexNumber];
 	vec2 texCoords[object.vertexNumber];
 	*vna = *generateSmoothNormals(vna, object.points, object.normals, object.vertexNumber);
@@ -673,12 +673,14 @@ int main(int argc, char *argv[])
 		model = multiplymat4(translatevec3(translation), scale(fScale));
 		drawTess(sphereVAO, tessShader, planet.vertexNumber, textureColorBuffer, model, translation);
 		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
-		drawAtmoshere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor);
+		//drawAtmoshere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor);
 		
 		model = scale(25.0);
 		draw(quadVAO, fboShader, 6, textureColorBuffer, model, translation);
 		
-		model = multiplymat4(translate(-400.0, -100.0, 0.0), scale(1000.0));
+		vec4 cc = getCameraPosition(translate(-10.0, 0.0, 0.0));
+		
+		model = multiplymat4(multiplymat4(translate(cc.x, cc.y, cc.z), scale(1.0)), getViewRotation());
 		draw(objectVAO, ringShader, object.vertexNumber, earthTex, model, translation);
 		
 		glfwPollEvents();

@@ -19,7 +19,6 @@ enum Camera_Movement {
 	RIGHT
 };
 
-
 mat4 getViewMatrix();
 mat4 getViewPosition();
 mat4 getViewRotation();
