@@ -64,6 +64,18 @@ void createShader(GLuint *shader, char *vert, char *frag)
     glLinkProgram(*shader);
 }
 
+void initDepthShader() {
+
+	GLuint vertShader = LoadShader("shaders/depth.vert", GL_VERTEX_SHADER);
+	GLuint geomShader = LoadShader("shaders/depth.geom", GL_GEOMETRY_SHADER);
+	GLuint fragShader = LoadShader("shaders/depth.frag", GL_FRAGMENT_SHADER);
+	depthShader = glCreateProgram();
+	glAttachShader(depthShader, vertShader);
+	glAttachShader(depthShader, geomShader);
+	glAttachShader(depthShader, fragShader);
+	glLinkProgram(depthShader);
+}
+
 GLuint generateTextureAttachment(int depth, int stencil) {
 	GLuint textureID;
 	GLenum attachment_type;
@@ -92,8 +104,7 @@ GLuint generateTextureAttachment(int depth, int stencil) {
 }
 
 void initShaders() {
-	createShader(&depthShader, "shaders/depth.vert",
-		"shaders/depth.frag");
+	initDepthShader();
 
 	createShader(&shadowShader, "shaders/shadow.vert",
 		"shaders/shadow.frag");
@@ -370,9 +381,7 @@ mat4 cubeModelspace(float theta, float offsetX, float offsetZ) {
 void draw(GLuint VAO, GLuint shader, GLuint vertices, GLuint texture, mat4 m, mat4 *l) {
 	glUseProgram(shader);
 	initMVP(shader, m, getViewMatrix());
-	if(shader == framebufferShader) {
-		glUniform1f ( glGetUniformLocation(shader, "nearPlane"), nearPlane );
-		glUniform1f ( glGetUniformLocation(shader, "farPlane"), farPlane );
+	if(shader == depthShader) {
 	}
 	vec4 cameraPos = getCameraPosition(m);
 	
@@ -380,9 +389,11 @@ void draw(GLuint VAO, GLuint shader, GLuint vertices, GLuint texture, mat4 m, ma
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, depthCubemap);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, depthCubemap);
 	glUniform1i(glGetUniformLocation(shadowShader, "texture1"), 0);
 	glUniform1i(glGetUniformLocation(shadowShader, "depthMap"), 1);
+	glUniform1f ( glGetUniformLocation(shader, "farPlane"), 100.0 );
+	glUniform3f(glGetUniformLocation(shader, "lightPos"), 0.0, 0.0, 0.0);
 	glUniform3f(glGetUniformLocation(shader, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	
 	char *matToString[6] = {"lightSpace[0]", "lightSpace[1]", "lightSpace[2]", "lightSpace[3]", "lightSpace[4]", "lightSpace[5]"};
@@ -470,11 +481,13 @@ int main(int argc, char *argv[])
 		
 		//glCullFace(GL_FRONT);
 		doMovement(deltaTime);
-		glClearColor(1.0, 1.0, 1.0, 1.0);
+		glClearColor(0.2, 0.4, 0.1, 1.0);
 		glViewport(0, 0, 1024, 1024);
 		
 		glBindFramebuffer(GL_FRAMEBUFFER, depthbuffer);
 			glClear(GL_DEPTH_BUFFER_BIT);
+			model = scale(25.0);
+			draw(floorVAO, shadowShader, 6, floorTex, model, lightSpaceMatrix);
 			model = floorModelspace(theta);
 			draw(floorVAO, depthShader, 6, floorTex, model, lightSpaceMatrix);
 			for(int i = 0; i < numCubes; i++) {
@@ -491,7 +504,7 @@ int main(int argc, char *argv[])
 		glClearColor(1.0, 1.0, 1.0, 1.0);
 		
 		model = scale(25.0);
-		draw(screenVAO, framebufferShader, 6, depthCubemap, model, lightSpaceMatrix);
+		draw(floorVAO, shadowShader, 6, floorTex, model, lightSpaceMatrix);
 		model = floorModelspace(theta);
 		draw(floorVAO, shadowShader, 6, floorTex, model, lightSpaceMatrix);
 		for(int i = 0; i < numCubes; i++) {

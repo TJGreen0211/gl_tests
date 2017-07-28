@@ -5,15 +5,16 @@ in vec3 fE;
 in vec3 fN;
 in vec3 fL;
 in vec3 fH;
-in vec4 fLightSpace;
 
 out vec4 FragColor;
 
+uniform float farPlane;
+uniform vec3 lightPos;
 uniform sampler2D texture1;
-uniform sampler2D depthMap;
+uniform samplerCube depthMap;
 
-float shadowCalculation(vec4 fLight) {
-	float bias = max(0.9 * (1.0 - dot(fN, fL)), 0.5);
+float shadowCalculation() {
+	/*float bias = max(0.9 * (1.0 - dot(fN, fL)), 0.5);
 	vec3 projCoords = fLight.xyz/fLight.w;
 	projCoords = projCoords * 0.5 + 0.5;
 	float closestDepth = texture(depthMap, projCoords.xy).r;
@@ -30,6 +31,15 @@ float shadowCalculation(vec4 fLight) {
 	
 	if(projCoords.z > 1.0)
 		shadow = 0.0;
+	return shadow;*/
+	
+	vec3 fragToLight = lightPos - fE;
+	float closestDepth = texture(depthMap, fragToLight).r;
+	closestDepth *= farPlane;
+	float currentDepth = length(fragToLight);
+	float bias = max(0.9 * (1.0 - dot(fN, fL)), 0.5);
+	float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
+	FragColor = vec4(vec3(closestDepth / farPlane), 1.0);  
 	return shadow;
 }
 
@@ -50,7 +60,7 @@ void main()
 		specular = vec3(0.0, 0.0, 0.0);
 	}
 
-	float shadow = shadowCalculation(fLightSpace);
-	vec3 lighting = (ambient+(1.0-shadow) * (diffuse+specular));
-	FragColor = vec4(lighting, 1.0);
+	float shadow = shadowCalculation();
+	vec3 lighting = (ambient +(1.0 - shadow) * (diffuse+specular));
+	//FragColor = vec4(lighting, 1.0);
 }

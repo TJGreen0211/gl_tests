@@ -15,7 +15,6 @@ out vec3 fE;
 out vec3 fN;
 out vec3 fL;
 out vec3 fH;
-out vec4 fLightSpace;
 
 void main()
 {	
@@ -30,7 +29,6 @@ void main()
 	fL = normalize(lightDir);
 	fH = normalize((vPosition*model - lightPos) + ray).xyz;
 	
-	fLightSpace = vPosition*model*lightSpace;
 	texCoords = vTexCoords;
 	
 	//vColor = vec3(1.0, 0.5, 0.2);
