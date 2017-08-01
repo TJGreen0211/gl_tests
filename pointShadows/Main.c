@@ -4,11 +4,21 @@
 
 float nearPlane = 1.0f, farPlane = 75.0f;
 int mousePosX, mousePosY;
-GLuint shadowShader, framebufferShader, depthShader;
+GLuint shadowShader, framebufferShader, depthShader, skyboxShader;
 GLuint depthCubemap;
 int keys;
 int actionPress;
 float zNear = 0.5, zFar = 100000.0;
+
+void createShader(GLuint *shader, char *vert, char *frag)
+{
+	GLuint vertShader = LoadShader(vert, GL_VERTEX_SHADER);
+    GLuint fragShader = LoadShader(frag, GL_FRAGMENT_SHADER);
+    *shader = glCreateProgram();
+    glAttachShader(*shader, vertShader);
+    glAttachShader(*shader, fragShader);
+    glLinkProgram(*shader);
+}
 
 GLuint generateDepthCubemap(int width, int height)
 {
@@ -31,6 +41,91 @@ GLuint generateDepthCubemap(int width, int height)
     return textureID;
 }
 
+GLuint initSkybox() {
+	GLuint vPosition;
+	GLuint skyboxVBO;
+	GLfloat skyboxVertices[] = {
+        // Positions          
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
+
+        -1.0f, -1.0f, 1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f, -1.0f, 1.0f,
+
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+
+        -1.0f, -1.0f, 1.0f,
+        -1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, -1.0f, 1.0f,
+        -1.0f, -1.0f, 1.0f,
+
+        -1.0f, 1.0f, -1.0f,
+        1.0f, 1.0f, -1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f, -1.0f,
+
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f, 1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f, 1.0f,
+        1.0f, -1.0f, 1.0f
+    };  
+    
+    GLuint skyboxVAO;
+	glGenVertexArrays(1, &skyboxVAO);
+	glBindVertexArray(skyboxVAO);
+    glGenBuffers(1, &skyboxVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
+    vPosition = glGetAttribLocation(skyboxShader, "vPosition");
+    glEnableVertexAttribArray(vPosition);
+    glVertexAttribPointer(vPosition, 3, GL_FLOAT , GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
+    glBindVertexArray(0);
+    return skyboxVAO;
+}
+
+void drawSkybox(GLuint skyboxTexture, GLuint vao)
+{
+	glUseProgram(skyboxShader);
+	
+	glDepthMask(GL_FALSE);
+	glDepthFunc(GL_LEQUAL);
+    
+    mat4 mv = getViewRotation();
+    mat4 p = perspective(45.0, getWindowWidth()/getWindowHeight(), zNear, zFar);
+    
+	glUniformMatrix4fv(glGetUniformLocation( skyboxShader, "projection" ), 1, GL_TRUE, &p.m[0][0]);  
+    glUniformMatrix4fv(glGetUniformLocation( skyboxShader, "ModelView" ), 1, GL_TRUE, &mv.m[0][0] );
+    
+    glBindVertexArray (vao);
+    glActiveTexture(GL_TEXTURE0);
+    glUniform1i(glGetUniformLocation(skyboxShader, "skybox"), 0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glBindVertexArray(0);
+    
+    glDepthMask(GL_TRUE);
+}
+
+
 
 GLuint loadTexture(char const * path)
 {
@@ -52,16 +147,6 @@ GLuint loadTexture(char const * path)
     glBindTexture(GL_TEXTURE_2D, 0);
     SOIL_free_image_data(image);
     return textureID;
-}
-
-void createShader(GLuint *shader, char *vert, char *frag)
-{
-	GLuint vertShader = LoadShader(vert, GL_VERTEX_SHADER);
-    GLuint fragShader = LoadShader(frag, GL_FRAGMENT_SHADER);
-    *shader = glCreateProgram();
-    glAttachShader(*shader, vertShader);
-    glAttachShader(*shader, fragShader);
-    glLinkProgram(*shader);
 }
 
 void initDepthShader() {
@@ -111,6 +196,9 @@ void initShaders() {
 		
 	createShader(&framebufferShader, "shaders/framebuffer.vert",
 		"shaders/framebuffer.frag");
+		
+	createShader(&skyboxShader, "shaders/skybox.vert",
+		"shaders/skybox.frag");
 }
 
 GLuint initBuffers(GLuint shader, vec3 *vertices, vec3 *normals, vec2 *texCoords, int vertSize, int normSize, int texSize) {
@@ -355,11 +443,23 @@ GLuint initCube(GLuint shader) {
 }
 
 void initMVP(int shader, mat4 m, mat4 v) {
-	mat4 p = perspective(45.0, getWindowWidth()/getWindowHeight(), zNear, zFar);
+	mat4 p = perspective(90.0, getWindowWidth()/getWindowHeight(), zNear, zFar);
 	glUniformMatrix4fv(glGetUniformLocation(shader, "projection"), 1, GL_FALSE, &p.m[0][0]);
 	glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, &m.m[0][0]);
 	glUniformMatrix4fv(glGetUniformLocation(shader, "view"), 1, GL_FALSE, &v.m[0][0]);
 }
+
+mat4 getLookAtMatrix(vec4 lightPosition, vec3 lookAt) {
+	vec3 d = {lightPosition.x - lookAt.x, lightPosition.y - lookAt.y, lightPosition.z - lookAt.z};
+	d = normalizevec3(d);
+	float rad = 180.0 / M_PI;
+	float lightYaw = asin(-d.y) * rad;
+	float lightPitch = atan2(d.x, d.z) * rad;
+	printf("Yaw: %f, Pitch: %f\n", lightYaw, lightPitch);
+	mat4 rxry = multiplymat4(rotateX(lightYaw), rotateY(lightPitch));
+	return multiplymat4(rxry, translatevec4(lightPosition));
+}
+
 
 vec4 getCameraPosition(mat4 model) {
 	mat4 mvTranspose = transposemat4(multiplymat4(model, getViewPosition()));
@@ -380,9 +480,14 @@ mat4 cubeModelspace(float theta, float offsetX, float offsetZ) {
 
 void draw(GLuint VAO, GLuint shader, GLuint vertices, GLuint texture, mat4 m, mat4 *l) {
 	glUseProgram(shader);
+	/*vec3 look = {1.0, 0.0, 0.0};
+	vec4 lightPosition = {0.0, 0.0, 0.0, 1.0};
+	initMVP(shader, m, getLookAtMatrix(lightPosition, look));
+	mat4 shadowProjection = perspective(90.0, 1024.0/1024.0, zNear, zFar);
+	mat4 lightSpaceMatrix = multiplymat4(shadowProjection, getLookAtMatrix(lightPosition, look));
+	glUniformMatrix4fv(glGetUniformLocation(shader, "lightMatrix"), 1, GL_FALSE, &lightSpaceMatrix.m[0][0]);*/
+	
 	initMVP(shader, m, getViewMatrix());
-	if(shader == depthShader) {
-	}
 	vec4 cameraPos = getCameraPosition(m);
 	
 	glBindVertexArray(VAO);
@@ -392,8 +497,9 @@ void draw(GLuint VAO, GLuint shader, GLuint vertices, GLuint texture, mat4 m, ma
 	glBindTexture(GL_TEXTURE_CUBE_MAP, depthCubemap);
 	glUniform1i(glGetUniformLocation(shadowShader, "texture1"), 0);
 	glUniform1i(glGetUniformLocation(shadowShader, "depthMap"), 1);
+	
 	glUniform1f ( glGetUniformLocation(shader, "farPlane"), 100.0 );
-	glUniform3f(glGetUniformLocation(shader, "lightPos"), 0.0, 0.0, 0.0);
+	glUniform3f(glGetUniformLocation(shader, "lightPosition"), 0.0, 0.0, 0.0);
 	glUniform3f(glGetUniformLocation(shader, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	
 	char *matToString[6] = {"lightSpace[0]", "lightSpace[1]", "lightSpace[2]", "lightSpace[3]", "lightSpace[4]", "lightSpace[5]"};
@@ -403,16 +509,6 @@ void draw(GLuint VAO, GLuint shader, GLuint vertices, GLuint texture, mat4 m, ma
 	
 	glDrawArrays(GL_TRIANGLES, 0, vertices);
 	glBindVertexArray(0);
-}
-
-mat4 getLookAtMatrix(vec4 lightPosition, vec3 lookAt) {
-	vec3 d = {lightPosition.x - lookAt.x, lightPosition.y - lookAt.y, lightPosition.z - lookAt.z};
-	d = normalizevec3(d);
-	float rad = 180.0 / M_PI;
-	float lightYaw = asin(-d.y) * rad;
-	float lightPitch = atan2(d.x, d.z) * rad;
-	mat4 rxry = multiplymat4(rotateX(lightYaw), rotateY(lightPitch));
-	return multiplymat4(rxry, translatevec4(lightPosition));
 }
 
 void doMovement(float deltaTime) {
@@ -425,6 +521,46 @@ void doMovement(float deltaTime) {
         processKeyboard(LEFT, deltaTime, deltaSpeed);
     if(keys == GLFW_KEY_D && actionPress == GLFW_PRESS)
         processKeyboard(RIGHT, deltaTime, deltaSpeed);
+}
+
+GLuint loadCubemap(char **faces)
+{
+	GLuint textureID;
+    glGenTextures(1, &textureID);
+    glActiveTexture(GL_TEXTURE0);
+
+    int width, height;
+    unsigned char* image;
+
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+    for (GLuint i = 0; i < 6; i++)
+    {
+        image = SOIL_load_image(faces[i], &width, &height, 0, SOIL_LOAD_RGB);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+    	
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+
+    return textureID;
+}
+
+
+int initCubemap()
+{
+	char *cubemapArray[] = {
+		"shaders/skybox1/right.png",
+		"shaders/skybox1/left.png",
+		"shaders/skybox1/top.png",
+		"shaders/skybox1/bottom.png",
+		"shaders/skybox1/back.png",
+		"shaders/skybox1/front.png"
+	};
+	return loadCubemap(cubemapArray);
 }
 
 int main(int argc, char *argv[]) 
@@ -443,8 +579,10 @@ int main(int argc, char *argv[])
 	GLuint floorVAO = initFloor(shadowShader);
 	GLuint screenVAO = initFloor(framebufferShader);
 	GLuint cubeVAO = initCube(shadowShader);
+	GLuint skyboxVAO = initSkybox();
+	//GLuint skyboxTexture = initCubemap();
 	
-	vec3 lookAt[6] = {{1.0, 0.0, 0.0}, {-1.0, 1.0, 0.0},{0.0, 1.0, 0.0},
+	vec3 lookAt[6] = {{1.0, 0.0, 0.0}, {-1.0, 0.0, 0.0},{0.0, 1.0, 0.0},
 					{0.0, -1.0, 0.0},{0.0, 0.0, 1.0},{0.0, 0.0, -1.0}};
 	vec4 lightPosition = {0.0, 0.0, 0.0, 1.0};
 	
@@ -484,6 +622,7 @@ int main(int argc, char *argv[])
 		glClearColor(0.2, 0.4, 0.1, 1.0);
 		glViewport(0, 0, 1024, 1024);
 		
+		
 		glBindFramebuffer(GL_FRAMEBUFFER, depthbuffer);
 			glClear(GL_DEPTH_BUFFER_BIT);
 			model = scale(25.0);
@@ -496,6 +635,8 @@ int main(int argc, char *argv[])
 			}
 			model = multiplymat4(translate(0.0, -15.0, 0.0), scale(3.0));
 			draw(cubeVAO, depthShader, 36, cubeTex, model, lightSpaceMatrix);
+			model = multiplymat4(translate(-30.0, 0.0, 0.0), scale(7.0));
+			draw(cubeVAO, shadowShader, 36, cubeTex, model, lightSpaceMatrix);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		//glCullFace(GL_BACK);
 		
@@ -503,8 +644,9 @@ int main(int argc, char *argv[])
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 		glClearColor(1.0, 1.0, 1.0, 1.0);
 		
+		drawSkybox(depthCubemap, skyboxVAO);
 		model = scale(25.0);
-		draw(floorVAO, shadowShader, 6, floorTex, model, lightSpaceMatrix);
+		draw(screenVAO, framebufferShader, 6, depthCubemap, model, lightSpaceMatrix);
 		model = floorModelspace(theta);
 		draw(floorVAO, shadowShader, 6, floorTex, model, lightSpaceMatrix);
 		for(int i = 0; i < numCubes; i++) {
@@ -512,6 +654,8 @@ int main(int argc, char *argv[])
 			draw(cubeVAO, shadowShader, 36, cubeTex, model, lightSpaceMatrix);
 		}
 		model = multiplymat4(translate(0.0, -15.0, 0.0), scale(3.0));
+		draw(cubeVAO, shadowShader, 36, cubeTex, model, lightSpaceMatrix);
+		model = multiplymat4(translate(-30.0, 0.0, 0.0), scale(7.0));
 		draw(cubeVAO, shadowShader, 36, cubeTex, model, lightSpaceMatrix);
 		
 		glfwPollEvents();
