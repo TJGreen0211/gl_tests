@@ -11,6 +11,7 @@ uniform vec3 cameraPos;
 uniform vec3 lightPosition;
 
 out vec2 texCoords;
+out vec3 fragPos;
 out vec3 fE;
 out vec3 fN;
 out vec3 fL;
@@ -24,6 +25,7 @@ void main()
 	mat3 normalMatrix = transpose(inverse(mat3(model)));
 	vec4 lightPos = vec4(lightPosition, 1.0);
 	vec3 lightDir = normalize(vPosition*model - lightPos).xyz;
+	fragPos = vec3(vPosition*model).xyz;
 	fE = -normalize(vPosition*model).xyz;
 	fN = normalize(vNormal*normalMatrix);
 	fL = -normalize(lightDir);

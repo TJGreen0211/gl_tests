@@ -450,13 +450,23 @@ void initMVP(int shader, mat4 m, mat4 v) {
 }
 
 mat4 getLookAtMatrix(vec4 lightPosition, vec3 lookAt) {
+	mat4 rxry;
 	vec3 d = {lightPosition.x - lookAt.x, lightPosition.y - lookAt.y, lightPosition.z - lookAt.z};
 	d = normalizevec3(d);
 	float rad = 180.0 / M_PI;
 	float lightYaw = asin(-d.y) * rad;
 	float lightPitch = atan2(d.x, d.z) * rad;
 	printf("Yaw: %f, Pitch: %f\n", lightYaw, lightPitch);
-	mat4 rxry = multiplymat4(rotateX(lightYaw), rotateY(lightPitch));
+	/*if(lookAt.x == 1.0 || lookAt.z == -1.0) {
+		//printf("%f, %f, %f\n", lookAt.x, lookAt.y, lookAt.z);
+		//rxry = multiplymat4(rotateZ(180.0), multiplymat4(rotateX(lightYaw), rotateY(lightPitch)));
+		rxry = multiplymat4(rotateY(lightPitch), multiplymat4(rotateZ(180.0), rotateX(lightYaw)));
+	}
+	else {
+	vec3 s = {-1.0, 1.0, 1.0};
+		rxry = multiplymat4( scalevec3(s), multiplymat4(rotateX(lightYaw), rotateY(lightPitch)));
+	}*/
+	rxry = multiplymat4(rotateX(lightYaw), rotateY(lightPitch));
 	return multiplymat4(rxry, translatevec4(lightPosition));
 }
 
@@ -480,12 +490,12 @@ mat4 cubeModelspace(float theta, float offsetX, float offsetZ) {
 
 void draw(GLuint VAO, GLuint shader, GLuint vertices, GLuint texture, mat4 m, mat4 *l) {
 	glUseProgram(shader);
-	/*vec3 look = {1.0, 0.0, 0.0};
-	vec4 lightPosition = {0.0, 0.0, 0.0, 1.0};
-	initMVP(shader, m, getLookAtMatrix(lightPosition, look));
-	mat4 shadowProjection = perspective(90.0, 1024.0/1024.0, zNear, zFar);
-	mat4 lightSpaceMatrix = multiplymat4(shadowProjection, getLookAtMatrix(lightPosition, look));
-	glUniformMatrix4fv(glGetUniformLocation(shader, "lightMatrix"), 1, GL_FALSE, &lightSpaceMatrix.m[0][0]);*/
+	//vec3 look = {1.0, 0.0, 0.0};
+	//vec4 lightPosition = {0.0, 0.0, 0.0, 1.0};
+	//initMVP(shader, m, getLookAtMatrix(lightPosition, look));
+	//mat4 shadowProjection = perspective(90.0, 1024.0/1024.0, zNear, zFar);
+	//mat4 lightSpaceMatrix = multiplymat4(shadowProjection, getLookAtMatrix(lightPosition, look));
+	//glUniformMatrix4fv(glGetUniformLocation(shader, "lightMatrix"), 1, GL_FALSE, &lightSpaceMatrix.m[0][0]);*/
 	
 	initMVP(shader, m, getViewMatrix());
 	vec4 cameraPos = getCameraPosition(m);
@@ -549,20 +559,6 @@ GLuint loadCubemap(char **faces)
     return textureID;
 }
 
-
-int initCubemap()
-{
-	char *cubemapArray[] = {
-		"shaders/skybox1/right.png",
-		"shaders/skybox1/left.png",
-		"shaders/skybox1/top.png",
-		"shaders/skybox1/bottom.png",
-		"shaders/skybox1/back.png",
-		"shaders/skybox1/front.png"
-	};
-	return loadCubemap(cubemapArray);
-}
-
 int main(int argc, char *argv[]) 
 {
 	float theta = 0.0;
@@ -580,18 +576,35 @@ int main(int argc, char *argv[])
 	GLuint screenVAO = initFloor(framebufferShader);
 	GLuint cubeVAO = initCube(shadowShader);
 	GLuint skyboxVAO = initSkybox();
-	//GLuint skyboxTexture = initCubemap();
 	
+	
+	//rotate {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, -1.0}
 	vec3 lookAt[6] = {{1.0, 0.0, 0.0}, {-1.0, 0.0, 0.0},{0.0, 1.0, 0.0},
-					{0.0, -1.0, 0.0},{0.0, 0.0, 1.0},{0.0, 0.0, -1.0}};
+					{0.0, -1.0, 0.0},{0.0, 0.0, -1.0},{0.0, 0.0, 1.0}};
 	vec4 lightPosition = {0.0, 0.0, 0.0, 1.0};
 	
 	mat4 shadowProjection = perspective(90.0, 1024.0/1024.0, zNear, zFar);
 	
 	mat4 lightSpaceMatrix[6];
-	for(int i = 0; i < 6; i++) {
+	/*for(int i = 0; i < 6; i++) {
+		//printf("%f, %f, %f: ", lookAt[i].x, lookAt[i].y, lookAt[i].z);
 		lightSpaceMatrix[i] = multiplymat4(shadowProjection, getLookAtMatrix(lightPosition, lookAt[i]));
-	}
+	}*/
+	
+	vec3 s0 = {-1.0, 1.0, 1.0};
+	lightSpaceMatrix[0] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s0) ,getLookAtMatrix(lightPosition, lookAt[0])));
+	vec3 s1 = {1.0, 1.0, 1.0};
+	lightSpaceMatrix[1] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s1) ,getLookAtMatrix(lightPosition, lookAt[1])));
+	vec3 s2 = {-1.0, 1.0, 1.0};
+	lightSpaceMatrix[2] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s2) ,getLookAtMatrix(lightPosition, lookAt[2])));
+	vec3 s3 = {1.0, 1.0, 1.0};
+	lightSpaceMatrix[3] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s3) ,getLookAtMatrix(lightPosition, lookAt[3])));
+	vec3 s4 = {-1.0, 1.0, 1.0};
+	lightSpaceMatrix[4] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s4) ,getLookAtMatrix(lightPosition, lookAt[4])));
+	vec3 s5 = {1.0, 1.0, 1.0};
+	lightSpaceMatrix[5] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s5) ,getLookAtMatrix(lightPosition, lookAt[5])));
+	
+	
 		
 	int numCubes = 5;
 	float posXArray[numCubes];
@@ -626,17 +639,17 @@ int main(int argc, char *argv[])
 		glBindFramebuffer(GL_FRAMEBUFFER, depthbuffer);
 			glClear(GL_DEPTH_BUFFER_BIT);
 			model = scale(25.0);
-			draw(floorVAO, shadowShader, 6, floorTex, model, lightSpaceMatrix);
+			draw(floorVAO, depthShader, 6, floorTex, model, lightSpaceMatrix);
 			model = floorModelspace(theta);
 			draw(floorVAO, depthShader, 6, floorTex, model, lightSpaceMatrix);
 			for(int i = 0; i < numCubes; i++) {
 				model = cubeModelspace(theta, posXArray[i], posZArray[i]);
 				draw(cubeVAO, depthShader, 36, cubeTex, model, lightSpaceMatrix);
 			}
-			model = multiplymat4(translate(0.0, -15.0, 0.0), scale(3.0));
+			model = multiplymat4(translate(7.0, -15.0, 0.0), scale(3.0));
 			draw(cubeVAO, depthShader, 36, cubeTex, model, lightSpaceMatrix);
 			model = multiplymat4(translate(-30.0, 0.0, 0.0), scale(7.0));
-			draw(cubeVAO, shadowShader, 36, cubeTex, model, lightSpaceMatrix);
+			draw(cubeVAO, depthShader, 36, cubeTex, model, lightSpaceMatrix);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		//glCullFace(GL_BACK);
 		
@@ -646,14 +659,14 @@ int main(int argc, char *argv[])
 		
 		drawSkybox(depthCubemap, skyboxVAO);
 		model = scale(25.0);
-		draw(screenVAO, framebufferShader, 6, depthCubemap, model, lightSpaceMatrix);
+		draw(screenVAO, shadowShader, 6, depthCubemap, model, lightSpaceMatrix);
 		model = floorModelspace(theta);
 		draw(floorVAO, shadowShader, 6, floorTex, model, lightSpaceMatrix);
 		for(int i = 0; i < numCubes; i++) {
 			model = cubeModelspace(theta, posXArray[i], posZArray[i]);
 			draw(cubeVAO, shadowShader, 36, cubeTex, model, lightSpaceMatrix);
 		}
-		model = multiplymat4(translate(0.0, -15.0, 0.0), scale(3.0));
+		model = multiplymat4(translate(7.0, -15.0, 0.0), scale(3.0));
 		draw(cubeVAO, shadowShader, 36, cubeTex, model, lightSpaceMatrix);
 		model = multiplymat4(translate(-30.0, 0.0, 0.0), scale(7.0));
 		draw(cubeVAO, shadowShader, 36, cubeTex, model, lightSpaceMatrix);

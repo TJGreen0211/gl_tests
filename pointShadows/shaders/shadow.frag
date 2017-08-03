@@ -1,6 +1,7 @@
 #version 410
 
 in vec2 texCoords;
+in vec3 fragPos;
 in vec3 fE;
 in vec3 fN;
 in vec3 fL;
@@ -8,13 +9,14 @@ in vec3 fH;
 
 out vec4 FragColor;
 
+uniform vec3 cameraPos;
 uniform float farPlane;
 uniform vec3 lightPos;
 uniform sampler2D texture1;
 uniform samplerCube depthMap;
 
-float shadowCalculation() {
-	/*float bias = max(0.9 * (1.0 - dot(fN, fL)), 0.5);
+
+/*float bias = max(0.9 * (1.0 - dot(fN, fL)), 0.5);
 	vec3 projCoords = fLight.xyz/fLight.w;
 	projCoords = projCoords * 0.5 + 0.5;
 	float closestDepth = texture(depthMap, projCoords.xy).r;
@@ -32,14 +34,42 @@ float shadowCalculation() {
 	if(projCoords.z > 1.0)
 		shadow = 0.0;
 	return shadow;*/
-	
-	vec3 fragToLight = fE - lightPos;
+
+vec3 gridSamplingDisk[20] = vec3[]
+(
+   vec3(1, 1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1, 1,  1), 
+   vec3(1, 1, -1), vec3( 1, -1, -1), vec3(-1, -1, -1), vec3(-1, 1, -1),
+   vec3(1, 1,  0), vec3( 1, -1,  0), vec3(-1, -1,  0), vec3(-1, 1,  0),
+   vec3(1, 0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1, 0, -1),
+   vec3(0, 1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0, 1, -1)
+);
+
+float shadowCalculation() {
+	vec3 fragToLight = lightPos - fragPos;
 	float closestDepth = texture(depthMap, fragToLight).r;
 	closestDepth *= farPlane;
 	float currentDepth = length(fragToLight);
+	
+	
+	/*float shadow = 0.0;
+	float bias = 0.15;
+	int samples = 20;
+	float viewDistance = length(cameraPos - fE);
+	float diskRadius = (1.0 + (viewDistance / farPlane)) / 25.0;
+	for(int i = 0; i < samples; i++) {
+		float closestDepth = texture(depthMap, fragToLight + gridSamplingDisk[i] * diskRadius).r;
+		closestDepth *= farPlane;
+		if(currentDepth - bias > closestDepth)
+			shadow += 1.0;
+	}
+	shadow /= float(samples);*/
+	
+	
 	float bias = max(0.9 * (1.0 - dot(fN, fL)), 0.5);
-	float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
-	FragColor = vec4(vec3(closestDepth / farPlane), 1.0);  
+	float shadow = currentDepth - 0.1 > closestDepth ? 1.0 : 0.0;
+	//FragColor = vec4(vec3(closestDepth / farPlane), 1.0); 
+	//FragColor =  vec4(vec3(fragToLight), 1.0);
+	//FragColor = vec4(vec3(texture(depthMap, fragToLight).r), 1.0);
 	return shadow;
 }
 
@@ -62,5 +92,5 @@ void main()
 
 	float shadow = shadowCalculation();
 	vec3 lighting = (ambient + (1.0 - shadow) *(diffuse+specular));
-	//FragColor = vec4(lighting, 1.0);
+	FragColor = vec4(lighting, 1.0);
 }
