@@ -449,25 +449,17 @@ void initMVP(int shader, mat4 m, mat4 v) {
 	glUniformMatrix4fv(glGetUniformLocation(shader, "view"), 1, GL_FALSE, &v.m[0][0]);
 }
 
-mat4 getLookAtMatrix(vec4 lightPosition, vec3 lookAt) {
+mat4 getLookAtMatrix(vec4 position, vec3 lookAt) {
 	mat4 rxry;
-	vec3 d = {lightPosition.x - lookAt.x, lightPosition.y - lookAt.y, lightPosition.z - lookAt.z};
+	//vec4 nPosition = normalizevec4(position);
+	vec3 d = {0.0 + lookAt.x, 0.0 + lookAt.y, 0.0 + lookAt.z};
 	d = normalizevec3(d);
 	float rad = 180.0 / M_PI;
 	float lightYaw = asin(-d.y) * rad;
 	float lightPitch = atan2(d.x, d.z) * rad;
 	printf("Yaw: %f, Pitch: %f\n", lightYaw, lightPitch);
-	/*if(lookAt.x == 1.0 || lookAt.z == -1.0) {
-		//printf("%f, %f, %f\n", lookAt.x, lookAt.y, lookAt.z);
-		//rxry = multiplymat4(rotateZ(180.0), multiplymat4(rotateX(lightYaw), rotateY(lightPitch)));
-		rxry = multiplymat4(rotateY(lightPitch), multiplymat4(rotateZ(180.0), rotateX(lightYaw)));
-	}
-	else {
-	vec3 s = {-1.0, 1.0, 1.0};
-		rxry = multiplymat4( scalevec3(s), multiplymat4(rotateX(lightYaw), rotateY(lightPitch)));
-	}*/
-	rxry = multiplymat4(rotateX(lightYaw), rotateY(lightPitch));
-	return multiplymat4(rxry, translatevec4(lightPosition));
+	rxry = multiplymat4(rotateX(-lightYaw), rotateY(-lightPitch));
+	return multiplymat4(rxry, translate(-position.x, -position.y, -position.z));
 }
 
 
@@ -478,24 +470,17 @@ vec4 getCameraPosition(mat4 model) {
 	return camPosition;
 }
 
-mat4 floorModelspace(float theta) {
-	mat4 m = multiplymat4(scale(25.0), rotateX(90.0));//multiplymat4(multiplymat4(scale(100.0), translate(-5.0, 0.0, 0.0)), rotateX(90));
-	return m;
-}
 
 mat4 cubeModelspace(float theta, float offsetX, float offsetZ) {
 	mat4 m = multiplymat4(translate(offsetX, 0.0, offsetZ), multiplymat4(rotateX(theta), rotateY(theta)));
 	return m;
 }
 
-void draw(GLuint VAO, GLuint shader, GLuint vertices, GLuint texture, mat4 m, mat4 *l) {
+void draw(GLuint VAO, GLuint shader, GLuint vertices, GLuint texture, mat4 m, mat4 *l, vec4 lightPosition) {
 	glUseProgram(shader);
-	//vec3 look = {1.0, 0.0, 0.0};
-	//vec4 lightPosition = {0.0, 0.0, 0.0, 1.0};
+	vec3 look = {0.0, 0.0, -1.0};
+	//vec4 light = {0.0, 30.0, 0.0, 1.0};
 	//initMVP(shader, m, getLookAtMatrix(lightPosition, look));
-	//mat4 shadowProjection = perspective(90.0, 1024.0/1024.0, zNear, zFar);
-	//mat4 lightSpaceMatrix = multiplymat4(shadowProjection, getLookAtMatrix(lightPosition, look));
-	//glUniformMatrix4fv(glGetUniformLocation(shader, "lightMatrix"), 1, GL_FALSE, &lightSpaceMatrix.m[0][0]);*/
 	
 	initMVP(shader, m, getViewMatrix());
 	vec4 cameraPos = getCameraPosition(m);
@@ -508,8 +493,8 @@ void draw(GLuint VAO, GLuint shader, GLuint vertices, GLuint texture, mat4 m, ma
 	glUniform1i(glGetUniformLocation(shadowShader, "texture1"), 0);
 	glUniform1i(glGetUniformLocation(shadowShader, "depthMap"), 1);
 	
-	glUniform1f ( glGetUniformLocation(shader, "farPlane"), 100.0 );
-	glUniform3f(glGetUniformLocation(shader, "lightPosition"), 0.0, 0.0, 0.0);
+	glUniform1f ( glGetUniformLocation(shader, "farPlane"), 200.0 );
+	glUniform3f(glGetUniformLocation(shader, "lightPosition"), lightPosition.x, lightPosition.y, lightPosition.z);
 	glUniform3f(glGetUniformLocation(shader, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	
 	char *matToString[6] = {"lightSpace[0]", "lightSpace[1]", "lightSpace[2]", "lightSpace[3]", "lightSpace[4]", "lightSpace[5]"};
@@ -571,16 +556,16 @@ int main(int argc, char *argv[])
 	initShaders();
 	GLuint cubeTex = loadTexture("shaders/tex2.png");
 	GLuint floorTex = loadTexture("shaders/tex1.jpg");
+	GLuint lightTex = loadTexture("shaders/light.png");
 	GLuint depthbuffer = initDepthbuffer();
 	GLuint floorVAO = initFloor(shadowShader);
-	GLuint screenVAO = initFloor(framebufferShader);
 	GLuint cubeVAO = initCube(shadowShader);
 	GLuint skyboxVAO = initSkybox();
 	
 	
 	//rotate {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, -1.0}
 	vec3 lookAt[6] = {{1.0, 0.0, 0.0}, {-1.0, 0.0, 0.0},{0.0, 1.0, 0.0},
-					{0.0, -1.0, 0.0},{0.0, 0.0, -1.0},{0.0, 0.0, 1.0}};
+					{0.0, -1.0, 0.0},{0.0, 0.0, 1.0},{0.0, 0.0, -1.0}};
 	vec4 lightPosition = {0.0, 0.0, 0.0, 1.0};
 	
 	mat4 shadowProjection = perspective(90.0, 1024.0/1024.0, zNear, zFar);
@@ -601,9 +586,8 @@ int main(int argc, char *argv[])
 	lightSpaceMatrix[3] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s3) ,getLookAtMatrix(lightPosition, lookAt[3])));
 	vec3 s4 = {-1.0, 1.0, 1.0};
 	lightSpaceMatrix[4] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s4) ,getLookAtMatrix(lightPosition, lookAt[4])));
-	vec3 s5 = {1.0, 1.0, 1.0};
+	vec3 s5 = {-1.0, 1.0, 1.0};
 	lightSpaceMatrix[5] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s5) ,getLookAtMatrix(lightPosition, lookAt[5])));
-	
 	
 		
 	int numCubes = 5;
@@ -617,9 +601,9 @@ int main(int argc, char *argv[])
 	}
 	
 	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
+	//glEnable(GL_CULL_FACE);
 	//glEnable(GL_MULTISAMPLE);
-	glCullFace(GL_BACK);
+	//glCullFace(GL_BACK);
 	
 	mat4 model;
 	//mat4 lightProjection = ortho(-100.0, 100.0, -100.0, 100.0, zNear, zFar);
@@ -638,18 +622,27 @@ int main(int argc, char *argv[])
 		
 		glBindFramebuffer(GL_FRAMEBUFFER, depthbuffer);
 			glClear(GL_DEPTH_BUFFER_BIT);
-			model = scale(25.0);
-			draw(floorVAO, depthShader, 6, floorTex, model, lightSpaceMatrix);
-			model = floorModelspace(theta);
-			draw(floorVAO, depthShader, 6, floorTex, model, lightSpaceMatrix);
+			model = multiplymat4(scale(55.0), rotateY(0.0));
+			draw(floorVAO, depthShader, 6, cubeTex, model, lightSpaceMatrix, lightPosition);
+			model = multiplymat4(scale(55.0), rotateY(-90.0));
+			draw(floorVAO, depthShader, 6, floorTex, model, lightSpaceMatrix, lightPosition);
+			model = multiplymat4(scale(55.0), rotateX(90.0));
+			draw(floorVAO, depthShader, 6, floorTex, model, lightSpaceMatrix, lightPosition);
+			model = multiplymat4(scale(55.0), rotateY(180.0));
+			draw(floorVAO, depthShader, 6, floorTex, model, lightSpaceMatrix, lightPosition);
+			
 			for(int i = 0; i < numCubes; i++) {
 				model = cubeModelspace(theta, posXArray[i], posZArray[i]);
-				draw(cubeVAO, depthShader, 36, cubeTex, model, lightSpaceMatrix);
+				draw(cubeVAO, depthShader, 36, cubeTex, model, lightSpaceMatrix, lightPosition);
 			}
 			model = multiplymat4(translate(7.0, -15.0, 0.0), scale(3.0));
-			draw(cubeVAO, depthShader, 36, cubeTex, model, lightSpaceMatrix);
+			draw(cubeVAO, depthShader, 36, cubeTex, model, lightSpaceMatrix, lightPosition);
 			model = multiplymat4(translate(-30.0, 0.0, 0.0), scale(7.0));
-			draw(cubeVAO, depthShader, 36, cubeTex, model, lightSpaceMatrix);
+			draw(cubeVAO, depthShader, 36, cubeTex, model, lightSpaceMatrix, lightPosition);
+			model = multiplymat4(translate(-4.0, 0.0, -25.0), scale(8.0));
+			//draw(cubeVAO, depthShader, 36, cubeTex, model, lightSpaceMatrix, lightPosition);
+			model = multiplymat4(translate(0.0, 5.0, 10.0), scale(2.0));
+			draw(cubeVAO, depthShader, 36, cubeTex, model, lightSpaceMatrix, lightPosition);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		//glCullFace(GL_BACK);
 		
@@ -658,18 +651,30 @@ int main(int argc, char *argv[])
 		glClearColor(1.0, 1.0, 1.0, 1.0);
 		
 		drawSkybox(depthCubemap, skyboxVAO);
-		model = scale(25.0);
-		draw(screenVAO, shadowShader, 6, depthCubemap, model, lightSpaceMatrix);
-		model = floorModelspace(theta);
-		draw(floorVAO, shadowShader, 6, floorTex, model, lightSpaceMatrix);
+		model = multiplymat4(scale(55.0), rotateY(0.0));
+		draw(floorVAO, shadowShader, 6, cubeTex, model, lightSpaceMatrix, lightPosition);
+		model = multiplymat4(scale(55.0), rotateY(-90.0));
+		draw(floorVAO, shadowShader, 6, floorTex, model, lightSpaceMatrix, lightPosition);
+		model = multiplymat4(scale(55.0), rotateX(90.0));
+		draw(floorVAO, shadowShader, 6, floorTex, model, lightSpaceMatrix, lightPosition);
+		model = multiplymat4(scale(55.0), rotateY(180.0));
+		draw(floorVAO, shadowShader, 6, floorTex, model, lightSpaceMatrix, lightPosition);
 		for(int i = 0; i < numCubes; i++) {
 			model = cubeModelspace(theta, posXArray[i], posZArray[i]);
-			draw(cubeVAO, shadowShader, 36, cubeTex, model, lightSpaceMatrix);
+			draw(cubeVAO, shadowShader, 36, cubeTex, model, lightSpaceMatrix, lightPosition);
 		}
 		model = multiplymat4(translate(7.0, -15.0, 0.0), scale(3.0));
-		draw(cubeVAO, shadowShader, 36, cubeTex, model, lightSpaceMatrix);
+		draw(cubeVAO, shadowShader, 36, cubeTex, model, lightSpaceMatrix, lightPosition);
 		model = multiplymat4(translate(-30.0, 0.0, 0.0), scale(7.0));
-		draw(cubeVAO, shadowShader, 36, cubeTex, model, lightSpaceMatrix);
+		draw(cubeVAO, shadowShader, 36, cubeTex, model, lightSpaceMatrix, lightPosition);
+		model = multiplymat4(translate(-4.0, 0.0, -25.0), scale(8.0));
+		//draw(cubeVAO, shadowShader, 36, cubeTex, model, lightSpaceMatrix, lightPosition);
+		model = multiplymat4(translate(0.0, 5.0, 10.0), scale(2.0));
+		draw(cubeVAO, shadowShader, 36, cubeTex, model, lightSpaceMatrix, lightPosition);
+		
+		
+		model = multiplymat4(translate(lightPosition.x, lightPosition.y, lightPosition.z), scale(0.5));
+		draw(cubeVAO, shadowShader, 36, lightTex, model, lightSpaceMatrix, lightPosition);
 		
 		glfwPollEvents();
 		glfwSwapBuffers(window);
