@@ -8,10 +8,12 @@
 #include <OpenGL/OpenGL.h>
 #include <OpenGL/gl3.h>
 #include <GLFW/glfw3.h>
+#include "../include/SOIL/src/SOIL.h"
 
 void createShader(GLuint *shader, char *vert, char *frag);
 GLuint loadCubemap(char **faces);
 GLuint loadTexture(char const * path);
+GLuint loadSpriteTexture(char const * path);
 //GLfloat frameCount();
 
 #endif
