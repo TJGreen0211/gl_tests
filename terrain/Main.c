@@ -2,13 +2,37 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <time.h>
+#include <math.h>
 
 float zNear = 0.5, zFar = 100000.0;
 int mousePosX, mousePosY, actionPress, keys;
 GLuint depthMap, textureColorBuffer;
+GLuint depthCubemap;
 struct sphere planet;
 struct obj object;
 struct ring planetRing;
+
+GLuint generateDepthCubemap(int width, int height)
+{
+	GLuint textureID;
+    glGenTextures(1, &textureID);
+
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+    for (int i = 0; i < 6; i++)
+    {
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    	
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+
+    return textureID;
+}
+
 
 GLuint loadTexture(char const * path, int alphaFlag)
 {
@@ -69,6 +93,98 @@ GLuint generateTextureAttachment(int depth, int stencil, vec2 size) {
 	return textureID;
 }
 
+GLuint initInstanceBuffer(vec3 *vertices, int vertSize, vec3 *normals, int normSize, vec2 *texCoords, int texSize) {
+	GLuint vbo, vao;
+	float degToRad = M_PI / 180.0;
+	
+	int num = 1440;
+	float posXArray[num];
+	for(int i = 0; i < num; i++){
+		posXArray[i] = -(((float)rand()/(float)(RAND_MAX)) * 15.0);
+	}
+	float posYArray[num];
+	for(int i = 0; i < num; i++){
+		posYArray[i] = -(((float)rand()/(float)(RAND_MAX)) * 15.0);
+	}
+	float posZArray[num];
+	for(int i = 0; i < num; i++){
+		posZArray[i] = -(((float)rand()/(float)(RAND_MAX)));
+	}
+	
+	float rotXarray[num];
+	for(int i = 0; i < num; i++){
+		rotXarray[i] = -(((float)rand()/(float)(RAND_MAX)) * 360.0);
+	}
+	float rotYarray[num];
+	for(int i = 0; i < num; i++){
+		rotYarray[i] = -(((float)rand()/(float)(RAND_MAX)) * 360.0);
+	}
+	float rotZarray[num];
+	for(int i = 0; i < num; i++){
+		rotZarray[i] = -(((float)rand()/(float)(RAND_MAX)) * 360.0);
+	}
+	
+	float scaleArray[num];
+	for(int i = 0; i < num; i++){
+		scaleArray[i] = -(((float)rand()/(float)(RAND_MAX)));
+	}
+	
+	
+	vec3 points[num];
+	for(int i = 0; i < num; i++) {
+		float deg = i * degToRad;
+		points[i].x = cos(deg)*(63.710/2.0)+posXArray[i];
+		points[i].y = sin(deg)*(63.710/2.0)+posYArray[i];
+		points[i].z = posZArray[i];
+	}
+	
+	mat4 positions[num];
+	mat4 rotations[num];
+	for(int i = 0; i < num; i++) {
+		rotations[i] = multiplymat4(rotateX(rotXarray[i]), multiplymat4(rotateY(rotYarray[i]), rotateZ(rotZarray[i])));
+	}
+	for(int i = 0; i < num; i++) {
+		positions[i] = multiplymat4(multiplymat4(multiplymat4(rotateX(65.0), translate(points[i].x+32.0, points[i].y, points[i].z)), rotations[i]), scale(scaleArray[i]/10.0));
+	}
+	
+	vec3 translation = {65.0, 0.0, 0.0};
+	
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, vertSize+normSize+texSize+(sizeof(mat4)*num), NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, vertSize, vertices);
+	glBufferSubData(GL_ARRAY_BUFFER, vertSize, normSize, normals);
+	glBufferSubData(GL_ARRAY_BUFFER, vertSize+normSize, texSize, texCoords);
+	
+	glBufferSubData(GL_ARRAY_BUFFER, vertSize+normSize+texSize, (sizeof(mat4)*num), &positions);
+	
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(0));
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(vertSize));
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2*sizeof(GLfloat), BUFFER_OFFSET(vertSize+normSize));
+	glEnableVertexAttribArray(2);
+	
+	glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), BUFFER_OFFSET(vertSize+normSize+texSize));
+	glEnableVertexAttribArray(3);
+	glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), BUFFER_OFFSET(vertSize+normSize+texSize+sizeof(vec4)));
+	glEnableVertexAttribArray(4);
+	glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), BUFFER_OFFSET(vertSize+normSize+texSize+2*sizeof(vec4)));
+	glEnableVertexAttribArray(5);
+	glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), BUFFER_OFFSET(vertSize+normSize+texSize+3*sizeof(vec4)));
+	glEnableVertexAttribArray(6);
+	
+	glVertexAttribDivisor(3, 1);
+	glVertexAttribDivisor(4, 1);
+	glVertexAttribDivisor(5, 1);
+	glVertexAttribDivisor(6, 1);
+	
+	glBindVertexArray(0);
+	return vao;
+}
+
 void createShader(GLuint *shader, char *vert, char *frag)
 {
 	GLuint vertShader = LoadShader(vert, GL_VERTEX_SHADER);
@@ -77,6 +193,13 @@ void createShader(GLuint *shader, char *vert, char *frag)
     glAttachShader(*shader, vertShader);
     glAttachShader(*shader, fragShader);
     glLinkProgram(*shader);
+}
+
+GLuint initInstanceShader() {
+	GLuint shader;
+	createShader(&shader, "shaders/instance.vert",
+		"shaders/instance.frag");
+	return shader;
 }
 
 GLuint initSkyShader() {
@@ -102,8 +225,15 @@ GLuint initLightingShader() {
 
 GLuint initDepthShader() {
 	GLuint shader;
-	createShader(&shader, "shaders/depth.vert",
-		"shaders/depth.frag");
+	GLuint vertShader = LoadShader("shaders/depth.vert", GL_VERTEX_SHADER);
+	GLuint geomShader = LoadShader("shaders/depth.geom", GL_GEOMETRY_SHADER);
+	GLuint fragShader = LoadShader("shaders/depth.frag", GL_FRAGMENT_SHADER);
+	shader = glCreateProgram();
+	glAttachShader(shader, vertShader);
+	glAttachShader(shader, geomShader);
+	glAttachShader(shader, fragShader);
+	glLinkProgram(shader);
+	
 	return shader;
 }
 
@@ -246,6 +376,23 @@ GLuint initDepthBuffer() {
 	return fbo;
 }
 
+GLuint initCubeDepthbuffer() {
+	GLuint fbo;
+	glGenFramebuffers(1, &fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	depthCubemap = generateDepthCubemap(1024, 1024);
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthCubemap, 0);
+	GLuint status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	  if(status != GL_FRAMEBUFFER_COMPLETE)
+		  printf("GL_FRAMEBUFFER_COMPLETE failed, CANNOT use FBO\n");
+	
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	
+	return fbo;
+}
+
 GLuint initQuad() {
 	GLuint vao;
 	float vertices[] = {
@@ -327,7 +474,7 @@ GLuint initNoise() {
 
 GLuint initObjectBuffer() {
 	GLuint vao;
-	object = ObjLoadModel("/Users/tjgreen/Documents/OpenGL/gl_tests/terrain/assets/ferox.obj");
+	object = ObjLoadModel("/Users/tjgreen/Documents/OpenGL/gl_tests/terrain/assets/chimera.obj");
 	vec3 vna[object.vertexNumber];
 	vec2 texCoords[object.vertexNumber];
 	*vna = *generateSmoothNormals(vna, object.points, object.normals, object.vertexNumber);
@@ -337,6 +484,22 @@ GLuint initObjectBuffer() {
     	texCoords[i].y = 0.0;
     }
     vao = initBuffers(object.points, object.size, object.normals, object.nsize, texCoords, sizeof(texCoords[0])*object.vertexNumber);
+	
+	return vao;
+}
+
+GLuint initRockBuffer(char *path) {
+	GLuint vao;
+	object = ObjLoadModel(path);
+	vec3 vna[object.vertexNumber];
+	vec2 texCoords[object.vertexNumber];
+	*vna = *generateSmoothNormals(vna, object.points, object.normals, object.vertexNumber);
+	
+	for(int i = 0; i < object.vertexNumber; i++) {
+    	texCoords[i].x = 1.0;
+    	texCoords[i].y = 0.0;
+    }
+    vao = initInstanceBuffer(object.points, object.size, object.normals, object.nsize, texCoords, sizeof(texCoords[0])*object.vertexNumber);
 	
 	return vao;
 }
@@ -370,6 +533,27 @@ vec4 getCameraPosition(mat4 position) {
 	vec4 camPosition = multiplymat4vec4(mvTranspose, inverseCamera);
 	
 	return camPosition;
+}
+
+mat4 getLookAtMatrix(vec4 lightPosition, vec3 lookAt) {
+	mat4 rxry;
+	vec3 d = {lightPosition.x - lookAt.x, lightPosition.y - lookAt.y, lightPosition.z - lookAt.z};
+	d = normalizevec3(d);
+	float rad = 180.0 / M_PI;
+	float lightYaw = asin(-d.y) * rad;
+	float lightPitch = atan2(d.x, d.z) * rad;
+	printf("Yaw: %f, Pitch: %f\n", lightYaw, lightPitch);
+	/*if(lookAt.x == 1.0 || lookAt.z == -1.0) {
+		//printf("%f, %f, %f\n", lookAt.x, lookAt.y, lookAt.z);
+		//rxry = multiplymat4(rotateZ(180.0), multiplymat4(rotateX(lightYaw), rotateY(lightPitch)));
+		rxry = multiplymat4(rotateY(lightPitch), multiplymat4(rotateZ(180.0), rotateX(lightYaw)));
+	}
+	else {
+	vec3 s = {-1.0, 1.0, 1.0};
+		rxry = multiplymat4( scalevec3(s), multiplymat4(rotateX(lightYaw), rotateY(lightPitch)));
+	}*/
+	rxry = multiplymat4(rotateX(lightYaw), rotateY(lightPitch));
+	return multiplymat4(rxry, translatevec4(lightPosition));
 }
 
 void initMVP(int shader, mat4 m, mat4 v) {
@@ -447,7 +631,7 @@ void drawNoise(GLuint vao, GLuint shader, int vertices, GLuint texture) {
 }
 
 void draw(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, vec3 position) {
-	//glDisable(GL_CULL_FACE);
+	glDisable(GL_CULL_FACE);
 	//glEnable(GL_BLEND);
 	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glUseProgram(shader);
@@ -462,7 +646,7 @@ void draw(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, vec3 
 	glUniform1i(glGetUniformLocation(shader, "texture1"), 0);
 	glDrawArrays(GL_TRIANGLES, 0, vertices);
 	glBindVertexArray(0);
-	//glEnable(GL_CULL_FACE);
+	glEnable(GL_CULL_FACE);
 	//glCullFace(GL_BACK);
 	//glDisable(GL_BLEND);
 }
@@ -612,17 +796,40 @@ int main(int argc, char *argv[])
 	//GLuint depthShader = initDepthShader();
 	GLuint fboShader = initFramebufferShader();
 	GLuint noiseRenderShader = initNoiseShader();
+	GLuint instanceShader = initInstanceShader();
 	
-	//GLuint depthbuffer = initDepthBuffer();
+	//GLuint depthbuffer = initCubeDepthbuffer();
 	GLuint earthTex = loadTexture("shaders/earth.jpg", 0);
 	GLuint ringTex = loadTexture("shaders/ring.png", 1);
 	GLuint sphereVAO = initSphere();
 	GLuint ringVAO = initRing();
 	GLuint objectVAO = initObjectBuffer();
+	GLuint rockVAO = initRockBuffer("shaders/rock.obj");
+	GLuint rock2VAO = initRockBuffer("shaders/rock2.obj");
+	GLuint rock3VAO = initRockBuffer("shaders/rock3.obj");
 	
 	GLuint framebuffer = initFramebuffer();
 	GLuint quadVAO = initQuad();
 	GLuint sNoiseVAO = initNoise();
+	
+	vec3 lookAt[6] = {{1.0, 0.0, 0.0}, {-1.0, 0.0, 0.0},{0.0, 1.0, 0.0},
+					{0.0, -1.0, 0.0},{0.0, 0.0, -1.0},{0.0, 0.0, 1.0}};
+	vec4 lightPosition = {0.0, 0.0, 0.0, 1.0};
+	
+	mat4 shadowProjection = perspective(90.0, 1024.0/1024.0, zNear, zFar);
+	mat4 lightSpaceMatrix[6];
+	vec3 s0 = {-1.0, 1.0, 1.0};
+	lightSpaceMatrix[0] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s0) ,getLookAtMatrix(lightPosition, lookAt[0])));
+	vec3 s1 = {1.0, 1.0, 1.0};
+	lightSpaceMatrix[1] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s1) ,getLookAtMatrix(lightPosition, lookAt[1])));
+	vec3 s2 = {-1.0, 1.0, 1.0};
+	lightSpaceMatrix[2] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s2) ,getLookAtMatrix(lightPosition, lookAt[2])));
+	vec3 s3 = {1.0, 1.0, 1.0};
+	lightSpaceMatrix[3] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s3) ,getLookAtMatrix(lightPosition, lookAt[3])));
+	vec3 s4 = {-1.0, 1.0, 1.0};
+	lightSpaceMatrix[4] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s4) ,getLookAtMatrix(lightPosition, lookAt[4])));
+	vec3 s5 = {1.0, 1.0, 1.0};
+	lightSpaceMatrix[5] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s5) ,getLookAtMatrix(lightPosition, lookAt[5])));
 	
 	GLuint cubeVAO = initCube();
 	
@@ -645,11 +852,11 @@ int main(int argc, char *argv[])
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
 		doMovement(deltaTime);
-		glClearColor(0.0, 0.3, 1.0, 1.0);
+		glClearColor(0.1, 0.0, 0.2, 1.0);
 		
 		
-		vec3 translation = {6500.0, 0.0, 0.0};
-		float fScale = 6371.0;
+		vec3 translation = {65.0, 0.0, 0.0};
+		float fScale = 63.710;
 		float fScaleFactor = 1.025;
 		
 		
@@ -673,15 +880,39 @@ int main(int argc, char *argv[])
 		model = multiplymat4(translatevec3(translation), scale(fScale));
 		drawTess(sphereVAO, tessShader, planet.vertexNumber, textureColorBuffer, model, translation);
 		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
-		//drawAtmoshere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor);
+		drawAtmoshere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor);
 		
 		model = scale(25.0);
 		draw(quadVAO, fboShader, 6, textureColorBuffer, model, translation);
 		
-		vec4 cc = getCameraPosition(translate(-10.0, 0.0, 0.0));
+		//vec4 cc = getCameraPosition(translate(-10.0, 0.0, 0.0));
 		
-		model = multiplymat4(multiplymat4(translate(cc.x, cc.y, cc.z), scale(1.0)), getViewRotation());
+		//model = multiplymat4(multiplymat4(translate(cc.x, cc.y, cc.z), scale(1.0)), getViewRotation());
+		model = multiplymat4(translate(-75.0, 25.0, 0.0), scale(5.0));
 		draw(objectVAO, ringShader, object.vertexNumber, earthTex, model, translation);
+		
+		glUseProgram(instanceShader);
+		initMVP(instanceShader, model, getViewMatrix());
+		vec4 cameraPos = getCameraPosition(model);
+	
+		glBindVertexArray(rockVAO);
+		
+		glUniform3f(glGetUniformLocation(instanceShader, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+		glDrawArraysInstanced(GL_TRIANGLES, 0, object.vertexNumber, 1440);
+		glBindVertexArray(0);
+		
+		glBindVertexArray(rock2VAO);
+		
+		glUniform3f(glGetUniformLocation(instanceShader, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+		glDrawArraysInstanced(GL_TRIANGLES, 0, object.vertexNumber, 1440);
+		glBindVertexArray(0);
+		
+		glBindVertexArray(rock3VAO);
+		
+		glUniform3f(glGetUniformLocation(instanceShader, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+		glDrawArraysInstanced(GL_TRIANGLES, 0, object.vertexNumber, 1440);
+		glBindVertexArray(0);
+		
 		
 		glfwPollEvents();
 		glfwSwapBuffers(window);

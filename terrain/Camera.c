@@ -19,7 +19,7 @@ vec3 Right = {1.0, 0.0, 0.0};
 
 mat4 getViewMatrix()
 {	
-	rxry = multiplymat4(multiplymat4(rx, ry);
+	rxry = multiplymat4(rx, ry);
 	tr = translate(Position.x, Position.y, Position.z);	
 	return multiplymat4(rxry, tr);
 }
