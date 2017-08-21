@@ -12,6 +12,10 @@ uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
+float rand(vec2 co){
+    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+}
+
 void main()
 {
 	vec3 p0 = gl_TessCoord.x * tcPosition[0];
@@ -21,5 +25,7 @@ void main()
 	tePatchDistance = gl_TessCoord;
 	//gl_Position = vec4(tePosition, 1.0);
 	gTex = eTex[0];
-	gl_Position = vec4(tePosition.x, tePosition.y, tePosition.z*eOffset[1], 1.0)*model*view*projection;
+	float r = rand(vec2(tePosition.x, tePosition.y))/60.0;
+	
+	gl_Position = vec4(tePosition.x+r, tePosition.y+r, tePosition.z, 1.0)*model*view*projection;
 }
