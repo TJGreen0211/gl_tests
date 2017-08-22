@@ -308,6 +308,10 @@ vec2 multiplyvec2(vec2 v, vec2 u)
 	return out;
 }
 
+mat4 identityMatrix() {
+	return IDENTITY_MATRIX;
+}
+
 mat4 rotateX(float theta)
 {
 	float angle = DegreesToRadians * theta;

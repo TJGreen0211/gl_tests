@@ -81,6 +81,8 @@ vec4 multiplyvec4(vec4 v, vec4 u);
 vec3 multiplyvec3(vec3 v, vec3 u);
 vec2 multiplyvec2(vec2 v, vec2 u);
 
+mat4 identityMatrix();
+
 mat4 rotateX(float theta);
 mat4 rotateY(float theta);
 mat4 rotateZ(float theta);

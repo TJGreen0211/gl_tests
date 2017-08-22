@@ -12,6 +12,8 @@ uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
+uniform sampler2D noiseTexture;
+
 float rand(vec2 co){
     return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
@@ -22,10 +24,12 @@ void main()
 	vec3 p1 = gl_TessCoord.y * tcPosition[1];
 	vec3 p2 = gl_TessCoord.z * tcPosition[2];
 	vec3 tePosition = p0 + p1 + p2;
+	vec2 longlat = vec2((atan(tePosition.x, tePosition.y) / 3.1415926 + 1.0) * 0.5,
+                        (asin(tePosition.z) / 3.1415926 + 0.5));
+	vec3 noiseOffset = vec3(texture(noiseTexture, longlat))/20.0;
 	tePatchDistance = gl_TessCoord;
 	//gl_Position = vec4(tePosition, 1.0);
 	gTex = eTex[0];
-	float r = rand(vec2(tePosition.x, tePosition.y))/60.0;
 	
-	gl_Position = vec4(tePosition.x+r, tePosition.y+r, tePosition.z, 1.0)*model*view*projection;
+	gl_Position = vec4(tePosition.x+noiseOffset.x, tePosition.y+noiseOffset.y, tePosition.z, 1.0)*model*view*projection;
 }

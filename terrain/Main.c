@@ -404,7 +404,6 @@ GLuint initBuffers(vec3 *vertices, int vertSize, vec3 *normals, int normSize, ve
 	glBufferSubData(GL_ARRAY_BUFFER, vertSize, normSize, normals);
 	glBufferSubData(GL_ARRAY_BUFFER, vertSize+normSize, texSize, texCoords);
 	
-	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(0));
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(vertSize));
@@ -435,7 +434,7 @@ GLuint initFramebuffer() {
 	GLuint fbo;
 	glGenFramebuffers(1, &fbo);
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-	vec2 size = {512.0, 512.0};
+	vec2 size = {1024.0, 512.0};
 	textureColorBuffer = generateTextureAttachment(0, 0, size);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorBuffer, 0);
 	
@@ -703,8 +702,18 @@ void drawAtmoshere(GLuint VAO, GLuint shader, GLuint sky, int vertices, mat4 m, 
 	glCullFace(GL_BACK);
 }
 
-void drawTess(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, vec3 position,
-	GLuint permTexture, GLuint simplexTexture, GLuint gradTexture) {
+void drawInstanced(GLuint vao, GLuint shader, int vertexNumber, int drawAmount, mat4 model) {
+	initMVP(shader, model, getViewMatrix());
+	vec4 cameraPos = getCameraPosition(model);
+
+	glBindVertexArray(vao);
+	
+	glUniform3f(glGetUniformLocation(shader, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+	glDrawArraysInstanced(GL_TRIANGLES, 0, vertexNumber, drawAmount);
+	glBindVertexArray(0);
+}
+
+void drawTess(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, vec3 position) {
 	glUseProgram(shader);
 	initMVP(shader, m, getViewMatrix());
 	glBindVertexArray(vao);
@@ -716,14 +725,8 @@ void drawTess(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, v
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glUniform1i(glGetUniformLocation(shader, "texture1"), 0);
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, permTexture);
-	glUniform1i(glGetUniformLocation(shader, "permTexture"), 1);
-	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, simplexTexture);
-	glUniform1i(glGetUniformLocation(shader, "simplexTexture"), 2);
-	glActiveTexture(GL_TEXTURE3);
-	glBindTexture(GL_TEXTURE_2D, gradTexture);
-	glUniform1i(glGetUniformLocation(shader, "gradTexture"), 3);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glUniform1i(glGetUniformLocation(shader, "noiseTexture"), 1);
 	glPatchParameteri(GL_PATCH_VERTICES, vertices);
 	glDrawArrays(GL_PATCHES, 0, vertices);
 	glBindVertexArray(0);
@@ -731,6 +734,7 @@ void drawTess(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, v
 
 void drawNoise(GLuint vao, GLuint shader, int vertices, GLuint permTexture, GLuint simplexTexture, GLuint gradTexture) {
 	glDisable(GL_CULL_FACE);
+	glDisable(GL_DEPTH_TEST); 
 	glUseProgram(shader);
 	glBindVertexArray(vao);
 	
@@ -743,10 +747,12 @@ void drawNoise(GLuint vao, GLuint shader, int vertices, GLuint permTexture, GLui
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D, gradTexture);
 	glUniform1i(glGetUniformLocation(shader, "gradTexture"), 2);
+	initMVP(shader, identityMatrix(), getViewMatrix());
 	
-	glDrawArrays(GL_POINTS, 0, vertices);
+	glDrawArrays(GL_TRIANGLES, 0, vertices);
 	glBindVertexArray(0);
 	glEnable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST); 
 }
 
 void draw(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, vec3 position) {
@@ -961,10 +967,10 @@ int main(int argc, char *argv[])
 	glCullFace(GL_BACK);
 	
 	//glViewport(0, 0, 512, 512);
-	glViewport(0, 0, getWindowWidth(), getWindowHeight());
+	//glViewport(0, 0, getWindowWidth(), getWindowHeight());
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		drawNoise(sNoiseVAO, noiseRenderShader, 1024*512, permTexture, simplexTexture, gradTexture);
+		drawNoise(sNoiseVAO, noiseRenderShader, 6, permTexture, simplexTexture, gradTexture);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	
 	mat4 model, atmo;
@@ -995,15 +1001,14 @@ int main(int argc, char *argv[])
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 		glClearColor(1.0, 1.0, 1.0, 1.0);
 		
-		//drawNoise(sNoiseVAO, noiseRenderShader, 512*512, permTexture, simplexTexture, gradTexture);
+		//drawNoise(sNoiseVAO, noiseRenderShader, 6, permTexture, simplexTexture, gradTexture);
 		model = multiplymat4(translate(-10.0, 0.0, 0.0), multiplymat4(rotateX(theta), rotateY(theta)));
 		draw(cubeVAO, ringShader, 36, earthTex, model, translation);
 		
 		model = multiplymat4(multiplymat4(translatevec3(translation), rotateX(65.0)), scale(fScale*1.5));
 		draw(ringVAO, ringShader, planetRing.vertexNumber, ringTex, model, translation);
 		model = multiplymat4(translatevec3(translation), scale(fScale));
-		drawTess(sphereVAO, tessShader, planet.vertexNumber, textureColorBuffer, model, translation,
-			permTexture, simplexTexture, gradTexture);
+		drawTess(sphereVAO, tessShader, planet.vertexNumber, textureColorBuffer, model, translation);
 		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
 		drawAtmoshere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor);
 		
@@ -1017,27 +1022,9 @@ int main(int argc, char *argv[])
 		draw(objectVAO, ringShader, object.vertexNumber, earthTex, model, translation);
 		
 		glUseProgram(instanceShader);
-		initMVP(instanceShader, model, getViewMatrix());
-		vec4 cameraPos = getCameraPosition(model);
-	
-		glBindVertexArray(rockVAO);
-		
-		glUniform3f(glGetUniformLocation(instanceShader, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
-		glDrawArraysInstanced(GL_TRIANGLES, 0, object.vertexNumber, 1440);
-		glBindVertexArray(0);
-		
-		glBindVertexArray(rock2VAO);
-		
-		glUniform3f(glGetUniformLocation(instanceShader, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
-		glDrawArraysInstanced(GL_TRIANGLES, 0, object.vertexNumber, 1440);
-		glBindVertexArray(0);
-		
-		glBindVertexArray(rock3VAO);
-		
-		glUniform3f(glGetUniformLocation(instanceShader, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
-		glDrawArraysInstanced(GL_TRIANGLES, 0, object.vertexNumber, 1440);
-		glBindVertexArray(0);
-		
+		drawInstanced(rockVAO, instanceShader, object.vertexNumber, 1440, model);
+		drawInstanced(rock2VAO, instanceShader, object.vertexNumber, 1440, model);
+		drawInstanced(rock3VAO, instanceShader, object.vertexNumber, 1440, model);
 		
 		glfwPollEvents();
 		glfwSwapBuffers(window);
