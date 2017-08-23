@@ -198,70 +198,15 @@ GLuint generateTextureAttachment(int depth, int stencil, vec2 size) {
 
 GLuint initInstanceBuffer(vec3 *vertices, int vertSize, vec3 *normals, int normSize, vec2 *texCoords, int texSize) {
 	GLuint vbo, vao;
-	float degToRad = M_PI / 180.0;
-	
-	int num = 1440;
-	float posXArray[num];
-	for(int i = 0; i < num; i++){
-		posXArray[i] = -(((float)rand()/(float)(RAND_MAX)) * 15.0);
-	}
-	float posYArray[num];
-	for(int i = 0; i < num; i++){
-		posYArray[i] = -(((float)rand()/(float)(RAND_MAX)) * 15.0);
-	}
-	float posZArray[num];
-	for(int i = 0; i < num; i++){
-		posZArray[i] = -(((float)rand()/(float)(RAND_MAX)));
-	}
-	
-	float rotXarray[num];
-	for(int i = 0; i < num; i++){
-		rotXarray[i] = -(((float)rand()/(float)(RAND_MAX)) * 360.0);
-	}
-	float rotYarray[num];
-	for(int i = 0; i < num; i++){
-		rotYarray[i] = -(((float)rand()/(float)(RAND_MAX)) * 360.0);
-	}
-	float rotZarray[num];
-	for(int i = 0; i < num; i++){
-		rotZarray[i] = -(((float)rand()/(float)(RAND_MAX)) * 360.0);
-	}
-	
-	float scaleArray[num];
-	for(int i = 0; i < num; i++){
-		scaleArray[i] = -(((float)rand()/(float)(RAND_MAX)));
-	}
-	
-	
-	vec3 points[num];
-	for(int i = 0; i < num; i++) {
-		float deg = i * degToRad;
-		points[i].x = cos(deg)*(63.710/2.0)+posXArray[i];
-		points[i].y = sin(deg)*(63.710/2.0)+posYArray[i];
-		points[i].z = posZArray[i];
-	}
-	
-	mat4 positions[num];
-	mat4 rotations[num];
-	for(int i = 0; i < num; i++) {
-		rotations[i] = multiplymat4(rotateX(rotXarray[i]), multiplymat4(rotateY(rotYarray[i]), rotateZ(rotZarray[i])));
-	}
-	for(int i = 0; i < num; i++) {
-		positions[i] = multiplymat4(multiplymat4(multiplymat4(rotateX(65.0), translate(points[i].x+32.0, points[i].y, points[i].z)), rotations[i]), scale(scaleArray[i]/10.0));
-	}
-	
-	//vec3 translation = {65.0, 0.0, 0.0};
 	
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, vertSize+normSize+texSize+(sizeof(mat4)*num), NULL, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, vertSize+normSize+texSize, NULL, GL_STATIC_DRAW);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, vertSize, vertices);
 	glBufferSubData(GL_ARRAY_BUFFER, vertSize, normSize, normals);
 	glBufferSubData(GL_ARRAY_BUFFER, vertSize+normSize, texSize, texCoords);
-	
-	glBufferSubData(GL_ARRAY_BUFFER, vertSize+normSize+texSize, (sizeof(mat4)*num), &positions);
 	
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(0));
 	glEnableVertexAttribArray(0);
@@ -269,20 +214,6 @@ GLuint initInstanceBuffer(vec3 *vertices, int vertSize, vec3 *normals, int normS
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2*sizeof(GLfloat), BUFFER_OFFSET(vertSize+normSize));
 	glEnableVertexAttribArray(2);
-	
-	glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), BUFFER_OFFSET(vertSize+normSize+texSize));
-	glEnableVertexAttribArray(3);
-	glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), BUFFER_OFFSET(vertSize+normSize+texSize+sizeof(vec4)));
-	glEnableVertexAttribArray(4);
-	glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), BUFFER_OFFSET(vertSize+normSize+texSize+2*sizeof(vec4)));
-	glEnableVertexAttribArray(5);
-	glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), BUFFER_OFFSET(vertSize+normSize+texSize+3*sizeof(vec4)));
-	glEnableVertexAttribArray(6);
-	
-	glVertexAttribDivisor(3, 1);
-	glVertexAttribDivisor(4, 1);
-	glVertexAttribDivisor(5, 1);
-	glVertexAttribDivisor(6, 1);
 	
 	glBindVertexArray(0);
 	return vao;
@@ -488,9 +419,6 @@ GLuint initCubeDepthbuffer() {
 
 GLuint initNoise() {
 	GLuint vao;
-	clock_t start,end;
-	float time_spent;
-	start=clock();
 	
 	float vertices[] = {
 		-1.0f, -1.0f, 1.0f,
@@ -512,9 +440,7 @@ GLuint initNoise() {
     	c++;
     }
 	
-	end=clock();
-	time_spent=(((float)end - (float)start) / 1000000.0F );
-	printf("\nSystem time is at %f seconds\n", time_spent);
+	
 	
 	vao = initNoiseBuffer(vertArray, sizeof(vertices));
 	return vao;
@@ -702,11 +628,39 @@ void drawAtmoshere(GLuint VAO, GLuint shader, GLuint sky, int vertices, mat4 m, 
 	glCullFace(GL_BACK);
 }
 
-void drawInstanced(GLuint vao, GLuint shader, int vertexNumber, int drawAmount, mat4 model) {
+void drawInstanced(GLuint vao, GLuint vbo, GLuint shader, int vertexNumber, int drawAmount, vec3 *positions, mat4 *rotations, mat4 model, float *scaleArray) {
 	initMVP(shader, model, getViewMatrix());
 	vec4 cameraPos = getCameraPosition(model);
+	
+	//vec3 center = {65.0, 0.0, 0.0};
+	glfwGetTime();
+	
+	mat4 modelArr[vertexNumber];
+	for(int i = 0; i < vertexNumber; i++) {
+		//positions[i].x = cos(glfwGetTime())*positions[i].x;
+		//positions[i].y = sin(glfwGetTime())*positions[i].y;
+		//positions[i] = multiplymat4(multiplymat4(multiplymat4(rotateX(65.0), translate(points[i].x+translation.x, points[i].y+translation.y, points[i].z+translation.z)), rotations[i]), scale(scaleArray[i]/10.0));
+		modelArr[i] = multiplymat4(multiplymat4(translate(positions[i].x+65.0/2.0, positions[i].y, positions[i].z), rotations[i]), scale(scaleArray[i]/10.0));
+	}
 
 	glBindVertexArray(vao);
+	
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), BUFFER_OFFSET(0));
+	glEnableVertexAttribArray(3);
+	glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), BUFFER_OFFSET(sizeof(vec4)));
+	glEnableVertexAttribArray(4);
+	glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), BUFFER_OFFSET(2*sizeof(vec4)));
+	glEnableVertexAttribArray(5);
+	glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), BUFFER_OFFSET(3*sizeof(vec4)));
+	glEnableVertexAttribArray(6);
+	
+	glVertexAttribDivisor(3, 1);
+	glVertexAttribDivisor(4, 1);
+	glVertexAttribDivisor(5, 1);
+	glVertexAttribDivisor(6, 1);
+	
+	glBufferData(GL_ARRAY_BUFFER, sizeof(mat4)*vertexNumber, &modelArr, GL_STATIC_DRAW);
 	
 	glUniform3f(glGetUniformLocation(shader, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	glDrawArraysInstanced(GL_TRIANGLES, 0, vertexNumber, drawAmount);
@@ -748,6 +702,7 @@ void drawNoise(GLuint vao, GLuint shader, int vertices, GLuint permTexture, GLui
 	glBindTexture(GL_TEXTURE_2D, gradTexture);
 	glUniform1i(glGetUniformLocation(shader, "gradTexture"), 2);
 	initMVP(shader, identityMatrix(), getViewMatrix());
+	glUniform1f(glGetUniformLocation(shader, "systemTime"), glfwGetTime());
 	
 	glDrawArrays(GL_TRIANGLES, 0, vertices);
 	glBindVertexArray(0);
@@ -966,12 +921,65 @@ int main(int argc, char *argv[])
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 	
+	clock_t start,end;
+	float time_spent;
+	start=clock();
 	//glViewport(0, 0, 512, 512);
 	//glViewport(0, 0, getWindowWidth(), getWindowHeight());
-	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		drawNoise(sNoiseVAO, noiseRenderShader, 6, permTexture, simplexTexture, gradTexture);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	
+	float degToRad = M_PI / 180.0;
+	float innerRad = 32.5;
+	float width = 15.0;
+	float height = 1.0;
+	int instancedDraws = 720;
+	vec3 pos1[instancedDraws];
+	for(int i = 0; i < instancedDraws; i++){
+		float deg = i * degToRad;
+		pos1[i].x = cos(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
+		pos1[i].y = sin(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
+		pos1[i].z = -(((float)rand()/(float)(RAND_MAX)) * height);
+	}
+	vec3 pos2[instancedDraws];
+	for(int i = 0; i < instancedDraws; i++){
+		float deg = i * degToRad;
+		pos2[i].x = cos(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
+		pos2[i].y = sin(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
+		pos2[i].z = -(((float)rand()/(float)(RAND_MAX)) * height);
+	}
+	vec3 pos3[instancedDraws];
+	for(int i = 0; i < instancedDraws; i++){
+		float deg = i * degToRad;
+		pos3[i].x = cos(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
+		pos3[i].y = sin(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
+		pos3[i].z = -(((float)rand()/(float)(RAND_MAX)) * height);
+	}
+	
+	vec3 xAxis = {1.0, 0.0, 0.0};
+	vec3 yAxis = {0.0, 1.0, 0.0};
+	vec3 zAxis = {0.0, 0.0, 1.0};
+	
+	quaternion xRot[instancedDraws], yRot[instancedDraws];
+	for(int i = 0; i < instancedDraws; i++){
+		xRot[i] = angleAxis((-(((float)rand()/(float)(RAND_MAX)) * M_PI)), xAxis, zAxis);
+		yRot[i] = angleAxis((-(((float)rand()/(float)(RAND_MAX)) * M_PI)), yAxis, zAxis);
+	}
+	
+	mat4 rotations[instancedDraws];
+	for(int i = 0; i < instancedDraws; i++) {
+		rotations[i] = quaternionToRotation(quatMultiply(xRot[i], yRot[i]));//multiplymat4(rotateX(rotXarray[i]), multiplymat4(rotateY(rotYarray[i]), rotateZ(rotZarray[i])));
+	}
+	
+	float scaleArray[instancedDraws];
+	for(int i = 0; i < instancedDraws; i++){
+		scaleArray[i] = (-(((float)rand()/(float)(RAND_MAX))));
+	}
+	
+	GLuint positionsVBO;
+	glGenBuffers(1, &positionsVBO);
+	
+	end=clock();
+	time_spent=(((float)end - (float)start) / 1000000.0F );
+	printf("\nSystem time is at %f seconds\n", time_spent);
 	
 	mat4 model, atmo;
 	glViewport(0, 0, getWindowWidth(), getWindowHeight());
@@ -984,11 +992,14 @@ int main(int argc, char *argv[])
 		doMovement(deltaTime);
 		glClearColor(0.1, 0.0, 0.2, 1.0);
 		
-		
 		vec3 translation = {65.0, 0.0, 0.0};
 		float fScale = 63.710;
 		float fScaleFactor = 1.025;
 		
+		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			drawNoise(sNoiseVAO, noiseRenderShader, 6, permTexture, simplexTexture, gradTexture);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		
 		/*glBindFramebuffer(GL_FRAMEBUFFER, depthbuffer);
 			glClear(GL_DEPTH_BUFFER_BIT);
@@ -1005,7 +1016,8 @@ int main(int argc, char *argv[])
 		model = multiplymat4(translate(-10.0, 0.0, 0.0), multiplymat4(rotateX(theta), rotateY(theta)));
 		draw(cubeVAO, ringShader, 36, earthTex, model, translation);
 		
-		model = multiplymat4(multiplymat4(translatevec3(translation), rotateX(65.0)), scale(fScale*1.5));
+		//model = multiplymat4(multiplymat4(translatevec3(translation), rotateX(65.0)), scale(fScale*1.5));
+		model = multiplymat4(translatevec3(translation), scale(fScale*1.5));
 		draw(ringVAO, ringShader, planetRing.vertexNumber, ringTex, model, translation);
 		model = multiplymat4(translatevec3(translation), scale(fScale));
 		drawTess(sphereVAO, tessShader, planet.vertexNumber, textureColorBuffer, model, translation);
@@ -1022,9 +1034,9 @@ int main(int argc, char *argv[])
 		draw(objectVAO, ringShader, object.vertexNumber, earthTex, model, translation);
 		
 		glUseProgram(instanceShader);
-		drawInstanced(rockVAO, instanceShader, object.vertexNumber, 1440, model);
-		drawInstanced(rock2VAO, instanceShader, object.vertexNumber, 1440, model);
-		drawInstanced(rock3VAO, instanceShader, object.vertexNumber, 1440, model);
+		drawInstanced(rockVAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos1, rotations, model, scaleArray);
+		drawInstanced(rock2VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos2, rotations, model, scaleArray);
+		drawInstanced(rock3VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos3, rotations, model, scaleArray);
 		
 		glfwPollEvents();
 		glfwSwapBuffers(window);
