@@ -14,10 +14,10 @@ void main()
 {
 	tcPosition[ID] = tPosition[ID];
 	if(ID == 0) {
-		gl_TessLevelInner[0] = 3.0;
-	    gl_TessLevelOuter[0] = 2.0;
-	    gl_TessLevelOuter[1] = 2.0;
-	    gl_TessLevelOuter[2] = 2.0;
+		gl_TessLevelInner[0] = 1.0;
+	    gl_TessLevelOuter[0] = 1.0;
+	    gl_TessLevelOuter[1] = 1.0;
+	    gl_TessLevelOuter[2] = 1.0;
 	}
 	eTex[ID] = cTex[ID];
 	eOffset[ID] = tOffset[ID];

@@ -11,6 +11,7 @@ GLuint depthCubemap;
 struct sphere planet;
 struct obj object;
 struct ring planetRing;
+struct quadCube qc;
 
 int perm[256]= {151,160,137,91,90,15,
   131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
@@ -495,6 +496,19 @@ GLuint initQuad() {
     return vao;
 }
 
+GLuint initQuadCube() {
+	GLuint vao;
+	qc = createCube(5);
+	vec2 texCoords[qc.vertexNumber];
+	for(int i = 0; i < qc.vertexNumber; i++) {
+    	texCoords[i].x = 1.0;
+    	texCoords[i].y = 0.0;
+    }
+    vao = initBuffers(qc.points, qc.size, qc.normals, qc.nsize, texCoords, sizeof(texCoords[0])*qc.vertexNumber);
+    
+    return vao;
+}
+
 GLuint initObjectBuffer() {
 	GLuint vao;
 	object = ObjLoadModel("/Users/tjgreen/Documents/OpenGL/gl_tests/terrain/assets/chimera.obj");
@@ -628,21 +642,27 @@ void drawAtmoshere(GLuint VAO, GLuint shader, GLuint sky, int vertices, mat4 m, 
 	glCullFace(GL_BACK);
 }
 
-void drawInstanced(GLuint vao, GLuint vbo, GLuint shader, int vertexNumber, int drawAmount, vec3 *positions, mat4 *rotations, mat4 model, float *scaleArray) {
+void drawInstanced(GLuint vao, GLuint vbo, GLuint shader, int vertexNumber, int drawAmount, vec3 *positions, mat4 *rotations, mat4 model, float *scaleArray, float theta) {
 	initMVP(shader, model, getViewMatrix());
 	vec4 cameraPos = getCameraPosition(model);
+	
+	vec3 pos[drawAmount];
+	for(int i = 0; i < drawAmount; i++){
+		float deg = (theta/50.0)+(i * M_PI / 180.0);
+		pos[i].x = cos(deg)*32.5;//+(-(((float)rand()/(float)(RAND_MAX)) * width));
+		pos[i].y = sin(deg)*32.5;//+(-(((float)rand()/(float)(RAND_MAX)) * width));
+		pos[i].z = 10;//-(((float)rand()/(float)(RAND_MAX)) * height);
+	}
 	
 	//vec3 center = {65.0, 0.0, 0.0};
 	glfwGetTime();
 	
 	mat4 modelArr[vertexNumber];
 	for(int i = 0; i < vertexNumber; i++) {
-		//positions[i].x = cos(glfwGetTime())*positions[i].x;
-		//positions[i].y = sin(glfwGetTime())*positions[i].y;
-		//positions[i] = multiplymat4(multiplymat4(multiplymat4(rotateX(65.0), translate(points[i].x+translation.x, points[i].y+translation.y, points[i].z+translation.z)), rotations[i]), scale(scaleArray[i]/10.0));
 		modelArr[i] = multiplymat4(multiplymat4(translate(positions[i].x+65.0/2.0, positions[i].y, positions[i].z), rotations[i]), scale(scaleArray[i]/10.0));
+		//modelArr[i] = translate(pos[i].x+65.0/2.0, pos[i].y, pos[i].z);
 	}
-
+	
 	glBindVertexArray(vao);
 	
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -888,6 +908,8 @@ int main(int argc, char *argv[])
 	GLuint rock2VAO = initRockBuffer("shaders/rock2.obj");
 	GLuint rock3VAO = initRockBuffer("shaders/rock3.obj");
 	
+	GLuint quadCubeVAO = initQuadCube();
+	
 	GLuint framebuffer = initFramebuffer();
 	GLuint quadVAO = initQuad();
 	GLuint sNoiseVAO = initNoise();
@@ -983,6 +1005,12 @@ int main(int argc, char *argv[])
 	
 	mat4 model, atmo;
 	glViewport(0, 0, getWindowWidth(), getWindowHeight());
+	
+	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		drawNoise(sNoiseVAO, noiseRenderShader, 6, permTexture, simplexTexture, gradTexture);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	
 	while(!glfwWindowShouldClose(window))
 	{
 		theta += 0.5;
@@ -995,11 +1023,6 @@ int main(int argc, char *argv[])
 		vec3 translation = {65.0, 0.0, 0.0};
 		float fScale = 63.710;
 		float fScaleFactor = 1.025;
-		
-		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			drawNoise(sNoiseVAO, noiseRenderShader, 6, permTexture, simplexTexture, gradTexture);
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		
 		/*glBindFramebuffer(GL_FRAMEBUFFER, depthbuffer);
 			glClear(GL_DEPTH_BUFFER_BIT);
@@ -1015,6 +1038,9 @@ int main(int argc, char *argv[])
 		//drawNoise(sNoiseVAO, noiseRenderShader, 6, permTexture, simplexTexture, gradTexture);
 		model = multiplymat4(translate(-10.0, 0.0, 0.0), multiplymat4(rotateX(theta), rotateY(theta)));
 		draw(cubeVAO, ringShader, 36, earthTex, model, translation);
+		
+		model = multiplymat4(translate(5.0, 5.0, 5.0), scale(10.0));
+		draw(quadCubeVAO, ringShader, qc.vertexNumber, ringTex, model, translation);
 		
 		//model = multiplymat4(multiplymat4(translatevec3(translation), rotateX(65.0)), scale(fScale*1.5));
 		model = multiplymat4(translatevec3(translation), scale(fScale*1.5));
@@ -1034,9 +1060,9 @@ int main(int argc, char *argv[])
 		draw(objectVAO, ringShader, object.vertexNumber, earthTex, model, translation);
 		
 		glUseProgram(instanceShader);
-		drawInstanced(rockVAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos1, rotations, model, scaleArray);
-		drawInstanced(rock2VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos2, rotations, model, scaleArray);
-		drawInstanced(rock3VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos3, rotations, model, scaleArray);
+		drawInstanced(rockVAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos1, rotations, model, scaleArray, theta);
+		drawInstanced(rock2VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos2, rotations, model, scaleArray, theta);
+		drawInstanced(rock3VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos3, rotations, model, scaleArray, theta);
 		
 		glfwPollEvents();
 		glfwSwapBuffers(window);

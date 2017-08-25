@@ -31,5 +31,6 @@ void main()
 	//gl_Position = vec4(tePosition, 1.0);
 	gTex = eTex[0];
 	
-	gl_Position = vec4(tePosition.x+noiseOffset.x, tePosition.y+noiseOffset.y, tePosition.z, 1.0)*model*view*projection;
+	//gl_Position = vec4(tePosition.x+noiseOffset.x, tePosition.y+noiseOffset.y, tePosition.z, 1.0)*model*view*projection;
+	gl_Position = vec4(tePosition.x, tePosition.y, tePosition.z, 1.0)*model*view*projection;
 }
