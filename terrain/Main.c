@@ -1013,6 +1013,8 @@ int main(int argc, char *argv[])
 		drawNoise(sNoiseVAO, noiseRenderShader, 6, permTexture, simplexTexture, gradTexture);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	
+	float fpsFrames = 0.0;
+	float lastTime = 0.0;
 	while(!glfwWindowShouldClose(window))
 	{
 		theta += 0.5;
@@ -1021,6 +1023,14 @@ int main(int argc, char *argv[])
 		lastFrame = currentFrame;
 		doMovement(deltaTime);
 		glClearColor(0.1, 0.0, 0.2, 1.0);
+		
+		fpsFrames++;
+		if(currentFrame - lastTime >= 1.0)
+		{
+			//printf("%f\r", fpsFrames);
+			fpsFrames = 0.0;
+			lastTime += 1.0;
+		}
 		
 		vec3 translation = {65.0, 0.0, 0.0};
 		float fScale = 63.710;
@@ -1038,28 +1048,28 @@ int main(int argc, char *argv[])
 		glClearColor(1.0, 1.0, 1.0, 1.0);
 		
 		//drawNoise(sNoiseVAO, noiseRenderShader, 6, permTexture, simplexTexture, gradTexture);
-		//model = multiplymat4(translate(-10.0, 0.0, 0.0), multiplymat4(rotateX(theta), rotateY(theta)));
-		//draw(cubeVAO, ringShader, 36, earthTex, model, translation);
+		model = multiplymat4(translate(-10.0, 0.0, 0.0), multiplymat4(rotateX(theta), rotateY(theta)));
+		draw(cubeVAO, ringShader, 36, earthTex, model, translation);
 		
 		model = multiplymat4(translate(-25.0, 5.0, 5.0), scale(10.0));
 		draw(quadCubeVAO, ringShader, qc.vertexNumber, ringTex, model, translation);
 		
 		//model = multiplymat4(multiplymat4(translatevec3(translation), rotateX(65.0)), scale(fScale*1.5));
 		model = multiplymat4(translatevec3(translation), scale(fScale*1.5));
-		//draw(ringVAO, ringShader, planetRing.vertexNumber, ringTex, model, translation);
+		draw(ringVAO, ringShader, planetRing.vertexNumber, ringTex, model, translation);
 		model = multiplymat4(translatevec3(translation), scale(fScale));
 		drawTess(sphereVAO, tessShader, planet.vertexNumber, textureColorBuffer, model, translation);
 		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
 		drawAtmoshere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor);
 		
-		//model = multiplymat4(translate(-75.0, 25.0, 0.0), scale(10.0));
-		//draw(quadVAO, fboShader, 6, textureColorBuffer, model, translation);
+		model = multiplymat4(translate(-75.0, 25.0, 0.0), scale(10.0));
+		draw(quadVAO, fboShader, 6, textureColorBuffer, model, translation);
 		
 		//vec4 cc = getCameraPosition(translate(-10.0, 0.0, 0.0));
 		
 		//model = multiplymat4(multiplymat4(translate(cc.x, cc.y, cc.z), scale(1.0)), getViewRotation());
 		model = multiplymat4(translate(-75.0, 25.0, 0.0), scale(2.0));
-		//draw(objectVAO, ringShader, object.vertexNumber, earthTex, model, translation);
+		draw(objectVAO, ringShader, object.vertexNumber, earthTex, model, translation);
 		
 		glUseProgram(instanceShader);
 		drawInstanced(rockVAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos1, rotations, model, scaleArray, theta);
