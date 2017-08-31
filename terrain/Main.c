@@ -6,12 +6,12 @@
 
 float zNear = 0.5, zFar = 100000.0;
 int mousePosX, mousePosY, actionPress, keys;
-GLuint depthMap, textureColorBuffer;
+GLuint depthMap, textureColorBuffer, textureColorBuffer3D;
 GLuint depthCubemap;
 struct sphere planet;
 struct obj object;
 struct ring planetRing;
-struct quadCube qc;
+struct quadCube qc, qc2;
 
 int perm[256]= {151,160,137,91,90,15,
   131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
@@ -183,9 +183,9 @@ GLuint generateTextureAttachment(int depth, int stencil, vec2 size) {
 	glGenTextures(1, &textureID);
 	glBindTexture(GL_TEXTURE_2D, textureID);
 	if(!depth && !stencil)
-		glTexImage2D(GL_TEXTURE_2D, 0, attachment_type, getWindowWidth(), getWindowHeight(), 0, attachment_type, GL_UNSIGNED_BYTE, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, attachment_type, size.x, size.y, 0, attachment_type, GL_UNSIGNED_BYTE, NULL);
 	else if(depth && !stencil)
-		glTexImage2D(GL_TEXTURE_2D, 0, attachment_type, getWindowWidth(), getWindowHeight(), 0, attachment_type, GL_FLOAT, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, attachment_type, size.x, size.y, 0, attachment_type, GL_FLOAT, NULL);
 		
 	else
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, size.x, size.y, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
@@ -194,6 +194,33 @@ GLuint generateTextureAttachment(int depth, int stencil, vec2 size) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);//GL_CLAMP_TO_BORDER
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);//GL_CLAMP_TO_BORDER
     glBindTexture(GL_TEXTURE_2D, 0);
+	return textureID;
+}
+
+GLuint generateTextureAttachment3D(int depth, int stencil, vec2 size) {
+	GLuint textureID;
+	GLenum attachment_type;
+	if(!depth && !stencil)
+		attachment_type = GL_RGB;
+	else if(depth && !stencil)
+		attachment_type = GL_DEPTH_COMPONENT;
+	else if(!depth && stencil)
+		attachment_type = GL_STENCIL_INDEX;
+		
+	glGenTextures(1, &textureID);
+	glBindTexture(GL_TEXTURE_3D, textureID);
+	if(!depth && !stencil)
+		glTexImage3D(GL_TEXTURE_3D, 0, attachment_type, getWindowWidth(), getWindowHeight(), 1, 0, attachment_type, GL_UNSIGNED_BYTE, NULL);
+	else if(depth && !stencil)
+		glTexImage3D(GL_TEXTURE_3D, 0, attachment_type, getWindowWidth(), getWindowHeight(), 1, 0, attachment_type, GL_FLOAT, NULL);
+		
+	else
+		glTexImage3D(GL_TEXTURE_3D, 0, GL_DEPTH24_STENCIL8, size.x, size.y, 1, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST ); 
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);//GL_CLAMP_TO_BORDER
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);//GL_CLAMP_TO_BORDER
+    glBindTexture(GL_TEXTURE_3D, 0);
 	return textureID;
 }
 
@@ -373,6 +400,27 @@ GLuint initFramebuffer() {
 	GLuint rbo;
 	glGenRenderbuffers(1, &rbo);
 	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, size.x, size.y);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		printf("ERROR: Framebuffer is not complete");
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	
+	return fbo;
+}
+
+GLuint initFramebuffer3D() {
+	GLuint fbo;
+	glGenFramebuffers(1, &fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	vec2 size = {1024.0, 512.0};
+	textureColorBuffer = generateTextureAttachment3D(0, 0, size);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorBuffer, 0);
+	
+	GLuint rbo;
+	glGenRenderbuffers(1, &rbo);
+	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, getWindowWidth(), getWindowHeight());
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
@@ -495,14 +543,14 @@ GLuint initQuad() {
     return vao;
 }
 
-GLuint initQuadCube() {
+GLuint initQuadCube(int divisions) {
 	GLuint vao;
-	qc = createCube(15);
+	createCube(divisions, &qc);
 	vec2 texCoords[qc.vertexNumber];
 	vec3 vna[qc.vertexNumber];
 	for(int i = 0; i < qc.vertexNumber; i++) {
-    	texCoords[i].x = 1.0;
-    	texCoords[i].y = 0.0;
+    	texCoords[i].x = (atan2(qc.points[i].y, qc.points[i].x) / 3.1415926 + 1.0) * 0.5;
+    	texCoords[i].y = asin(qc.points[i].z) / 3.1415926 + 0.5;
     }
     *vna = *generateSmoothNormals(vna, qc.points, qc.normals, qc.vertexNumber);
     vao = initBuffers(qc.points, qc.size, vna, qc.nsize, texCoords, sizeof(texCoords[0])*qc.vertexNumber);
@@ -696,6 +744,7 @@ void drawTess(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, v
 	mat4 positionMatrix = translatevec3(position);
 	vec4 camPosition = getCameraPosition(positionMatrix);
 	glUniform3f(glGetUniformLocation(shader, "camPosition"), camPosition.x, camPosition.y, camPosition.z);
+	glUniform3f(glGetUniformLocation(shader, "translation"), position.x, position.y, position.z);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glUniform1i(glGetUniformLocation(shader, "texture1"), 0);
@@ -902,6 +951,7 @@ int main(int argc, char *argv[])
 	
 	//GLuint depthbuffer = initCubeDepthbuffer();
 	GLuint earthTex = loadTexture("shaders/earth.jpg", 0);
+	GLuint moonTex = loadTexture("shaders/moon.jpg", 0);
 	GLuint ringTex = loadTexture("shaders/ring.png", 1);
 	GLuint sphereVAO = initSphere();
 	GLuint ringVAO = initRing();
@@ -910,9 +960,10 @@ int main(int argc, char *argv[])
 	GLuint rock2VAO = initRockBuffer("shaders/rock2.obj");
 	GLuint rock3VAO = initRockBuffer("shaders/rock3.obj");
 	
-	GLuint quadCubeVAO = initQuadCube();
+	GLuint quadCubeVAO = initQuadCube(25);
 	
 	GLuint framebuffer = initFramebuffer();
+	//GLuint framebuffer3D = initFramebuffer3D();
 	GLuint quadVAO = initQuad();
 	GLuint sNoiseVAO = initNoise();
 	
@@ -1017,6 +1068,9 @@ int main(int argc, char *argv[])
 	float lastTime = 0.0;
 	while(!glfwWindowShouldClose(window))
 	{
+		//createCube(10, &qc2);
+		//free(qc2.points);
+		//free(qc2.normals);
 		theta += 0.5;
 		GLfloat currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
@@ -1034,7 +1088,9 @@ int main(int argc, char *argv[])
 		
 		vec3 translation = {65.0, 0.0, 0.0};
 		float fScale = 63.710;
-		float fScaleFactor = 1.025;
+		float fScaleFactor = 1.25;
+		
+		int terrainMaxLOD = (int)(log(fScale)/log(2));
 		
 		/*glBindFramebuffer(GL_FRAMEBUFFER, depthbuffer);
 			glClear(GL_DEPTH_BUFFER_BIT);
@@ -1052,13 +1108,13 @@ int main(int argc, char *argv[])
 		draw(cubeVAO, ringShader, 36, earthTex, model, translation);
 		
 		model = multiplymat4(translate(-25.0, 5.0, 5.0), scale(10.0));
-		draw(quadCubeVAO, ringShader, qc.vertexNumber, ringTex, model, translation);
+		draw(quadCubeVAO, ringShader, qc.vertexNumber, moonTex, model, translation);
 		
 		//model = multiplymat4(multiplymat4(translatevec3(translation), rotateX(65.0)), scale(fScale*1.5));
 		model = multiplymat4(translatevec3(translation), scale(fScale*1.5));
 		draw(ringVAO, ringShader, planetRing.vertexNumber, ringTex, model, translation);
 		model = multiplymat4(translatevec3(translation), scale(fScale));
-		drawTess(sphereVAO, tessShader, planet.vertexNumber, textureColorBuffer, model, translation);
+		drawTess(quadCubeVAO, tessShader, qc.vertexNumber, textureColorBuffer, model, translation);
 		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
 		drawAtmoshere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor);
 		
