@@ -6,7 +6,7 @@
 
 float zNear = 0.5, zFar = 100000.0;
 int mousePosX, mousePosY, actionPress, keys;
-GLuint depthMap, textureColorBuffer, textureColorBuffer3D;
+GLuint depthMap, textureColorBuffer, textureColorBuffer3D, sunNoiseTexture;
 GLuint depthCubemap;
 struct sphere planet;
 struct obj object;
@@ -389,13 +389,13 @@ GLuint initNoiseBuffer(vec3 *points, int pointSize) {
 	return vao;
 }
 
-GLuint initFramebuffer() {
+GLuint initFramebuffer(GLuint *textureID) {
 	GLuint fbo;
 	glGenFramebuffers(1, &fbo);
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 	vec2 size = {1024.0, 512.0};
-	textureColorBuffer = generateTextureAttachment(0, 0, size);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorBuffer, 0);
+	*textureID = generateTextureAttachment(0, 0, size);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *textureID, 0);
 	
 	GLuint rbo;
 	glGenRenderbuffers(1, &rbo);
@@ -608,7 +608,7 @@ GLuint initSphere() {
 
 GLuint initRing() {
 	GLuint vao;
-	planetRing = createRing(1, 1.0, 2.0);
+	planetRing = createRing(1, 1.5, 2.0);
 	vao = initBuffers(planetRing.points, planetRing.size, planetRing.normals, planetRing.nsize, planetRing.texCoords, planetRing.texsize);
 	return vao;
 }
@@ -619,6 +619,14 @@ vec4 getCameraPosition(mat4 position) {
 	vec4 camPosition = multiplymat4vec4(mvTranspose, inverseCamera);
 	
 	return camPosition;
+}
+
+vec4 getPositionModelspace(mat4 position, mat4 model) {
+	mat4 mvTranspose = transposemat4(multiplymat4(position, model));
+	vec4 inverseM = {-mvTranspose.m[3][0], -mvTranspose.m[3][1], -mvTranspose.m[3][2], -mvTranspose.m[3][3]};
+	vec4 positionModelspace = multiplymat4vec4(mvTranspose, inverseM);
+	
+	return positionModelspace;
 }
 
 mat4 getLookAtMatrix(vec4 lightPosition, vec3 lookAt) {
@@ -649,7 +657,7 @@ void initMVP(int shader, mat4 m, mat4 v) {
 	glUniformMatrix4fv(glGetUniformLocation(shader, "view"), 1, GL_FALSE, &v.m[0][0]);
 }
 
-void drawAtmoshere(GLuint VAO, GLuint shader, GLuint sky, int vertices, mat4 m, vec3 position, float scale, float scaleFactor) {
+void drawAtmosphere(GLuint VAO, GLuint shader, GLuint sky, int vertices, mat4 m, vec3 position, float scale, float scaleFactor, vec4 lightPosition) {
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_ONE, GL_ONE);
 	mat4 positionMatrix = translatevec3(position);
@@ -664,10 +672,6 @@ void drawAtmoshere(GLuint VAO, GLuint shader, GLuint sky, int vertices, mat4 m, 
 		
 	initMVP(shader, m, getViewMatrix());
 	
-	//printf("%f, %f\n", pow(camPosition.x, 2.0) + pow(camPosition.y, 2.0) + pow(camPosition.z, 2.0), pow(m.m[0][0], 2.0));
-	//printf("%f, %f, %f, %f\n", pow(camPosition.x-m.m[0][0],2.0), pow(camPosition.y-m.m[0][1], 2.0), pow(camPosition.z-m.m[0][2], 2.0), pow(m.m[0][0], 2.0));
-	
-	//float scaleFactor = 3.25;
 	float fOuter = scale*scaleFactor;
 	float fInner = scale;
 	vec3 C_R = {0.3, 0.7, 1.0};
@@ -681,7 +685,7 @@ void drawAtmoshere(GLuint VAO, GLuint shader, GLuint sky, int vertices, mat4 m, 
 	glUniform1f(glGetUniformLocation(shader, "time"), glfwGetTime());
 	
 	glUniform3f(glGetUniformLocation(shader, "camPosition"), camPosition.x, camPosition.y, camPosition.z);
-	//printf("%f, %f, %f\n", camPosition.x, camPosition.y, camPosition.z);
+	glUniform3f(glGetUniformLocation(shader, "lightPosition"), lightPosition.x, lightPosition.y, lightPosition.z);
 	
 	glBindVertexArray(VAO);
 	glDrawArrays(GL_TRIANGLES, 0, vertices);
@@ -691,7 +695,7 @@ void drawAtmoshere(GLuint VAO, GLuint shader, GLuint sky, int vertices, mat4 m, 
 	glCullFace(GL_BACK);
 }
 
-void drawInstanced(GLuint vao, GLuint vbo, GLuint shader, int vertexNumber, int drawAmount, vec3 *positions, mat4 *rotations, mat4 model, float *scaleArray, float theta) {
+void drawInstanced(GLuint vao, GLuint vbo, GLuint shader, int vertexNumber, int drawAmount, vec3 *positions, mat4 *rotations, mat4 model, float *scaleArray, float theta, vec4 lightPosition) {
 	initMVP(shader, model, getViewMatrix());
 	vec4 cameraPos = getCameraPosition(model);
 	
@@ -732,6 +736,7 @@ void drawInstanced(GLuint vao, GLuint vbo, GLuint shader, int vertexNumber, int 
 	glBufferData(GL_ARRAY_BUFFER, sizeof(mat4)*vertexNumber, &modelArr, GL_STATIC_DRAW);
 	
 	glUniform3f(glGetUniformLocation(shader, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+	glUniform3f(glGetUniformLocation(shader, "lightPosition"), lightPosition.x, lightPosition.y, lightPosition.z);
 	glDrawArraysInstanced(GL_TRIANGLES, 0, vertexNumber, drawAmount);
 	glBindVertexArray(0);
 }
@@ -756,7 +761,7 @@ void drawTess(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, v
 	glBindVertexArray(0);
 }
 
-void drawNoise(GLuint vao, GLuint shader, int vertices, GLuint permTexture, GLuint simplexTexture, GLuint gradTexture) {
+void drawNoise(GLuint vao, GLuint shader, int vertices, GLuint permTexture, GLuint simplexTexture, GLuint gradTexture, int animate) {
 	glDisable(GL_CULL_FACE);
 	glDisable(GL_DEPTH_TEST); 
 	glUseProgram(shader);
@@ -773,6 +778,7 @@ void drawNoise(GLuint vao, GLuint shader, int vertices, GLuint permTexture, GLui
 	glUniform1i(glGetUniformLocation(shader, "gradTexture"), 2);
 	initMVP(shader, identityMatrix(), getViewMatrix());
 	glUniform1f(glGetUniformLocation(shader, "systemTime"), glfwGetTime());
+	glUniform1i(glGetUniformLocation(shader, "animated"), animate);
 	
 	glDrawArrays(GL_TRIANGLES, 0, vertices);
 	glBindVertexArray(0);
@@ -780,9 +786,9 @@ void drawNoise(GLuint vao, GLuint shader, int vertices, GLuint permTexture, GLui
 	glEnable(GL_DEPTH_TEST); 
 }
 
-void draw(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, vec3 position) {
+void draw(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, vec3 position, vec4 lightPosition) {
 	glDisable(GL_CULL_FACE);
-	glEnable(GL_CULL_FACE);
+	//glEnable(GL_CULL_FACE);
 	//glEnable(GL_BLEND);
 	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glUseProgram(shader);
@@ -792,6 +798,7 @@ void draw(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, vec3 
 	vec4 camPosition = getCameraPosition(positionMatrix);
 	
 	glUniform3f(glGetUniformLocation(shader, "cameraPos"), camPosition.x, camPosition.y, camPosition.z);
+	glUniform3f(glGetUniformLocation(shader, "lightPosition"), lightPosition.x, lightPosition.y, lightPosition.z);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glUniform1i(glGetUniformLocation(shader, "texture1"), 0);
@@ -800,6 +807,61 @@ void draw(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, vec3 
 	glEnable(GL_CULL_FACE);
 	//glCullFace(GL_BACK);
 	//glDisable(GL_BLEND);
+}
+
+vec4 rotateLight(GLuint vao, GLuint shader, int vertices, GLuint texture, float theta, vec3 position)
+{
+	glUseProgram(shader);
+	glBindVertexArray (vao);
+	mat4 positionMatrix = translatevec3(position);
+	vec4 camPosition = getCameraPosition(positionMatrix);
+	
+	vec3 translation;
+	translation.x = (400.0) * cos(theta/75.0);
+	translation.y = 0.0;
+	translation.z = (400.0) * sin(theta/75.0);
+
+	mat4 model = multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(translation)), scale(15.0)),rotateX(90.0));
+	initMVP(shader, model, getViewMatrix());
+
+	glUniform3f(glGetUniformLocation(shader, "cameraPos"), camPosition.x, camPosition.y, camPosition.z);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glUniform1i(glGetUniformLocation(shader, "texture1"), 0);
+	glDrawArrays(GL_TRIANGLES, 0, vertices);
+	glBindVertexArray(0);
+	glBindVertexArray(0);
+	
+	vec4 l = {translation.x, translation.y, translation.z, 1.0};
+	return l;
+}
+
+void drawOrbit(GLuint vao, GLuint shader, int vertices, GLuint texture, float theta, mat4 m, vec3 position)
+{
+	glUseProgram(shader);
+	glBindVertexArray (vao);
+	mat4 positionMatrix = translatevec3(position);
+	vec4 camPosition = getCameraPosition(positionMatrix);
+	
+	vec3 translation;
+	translation.x = (200.0) * cos(theta/100.0);
+	translation.y = 0.0;
+	translation.z = (200.0) * sin(theta/100.0);
+
+	mat4 model = multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(translation)), scale(10.0)),rotateX(90.0));
+	initMVP(shader, model, getViewMatrix());
+
+	glUniform3f(glGetUniformLocation(shader, "cameraPos"), camPosition.x, camPosition.y, camPosition.z);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glUniform1i(glGetUniformLocation(shader, "texture1"), 0);
+	glDrawArrays(GL_TRIANGLES, 0, vertices);
+	glBindVertexArray(0);
+	glBindVertexArray(0);
+}
+
+void drawNoiseFramebuffer() {
+
 }
 
 void doMovement(float deltaTime) {
@@ -814,129 +876,51 @@ void doMovement(float deltaTime) {
         processKeyboard(RIGHT, deltaTime, deltaSpeed);
 }
 
-GLuint initCube() {
-	GLuint vao;
-	GLfloat vertices[] = {
-        // Positions          
-		 1.0, -1.0,  1.0, 
-		-1.0, -1.0,  1.0, 
-		 1.0, -1.0, -1.0, 
-		 1.0, -1.0, -1.0, 
-		-1.0, -1.0,  1.0, 
-		-1.0, -1.0, -1.0, 
+float getDeltaTime(float lastFrame) {
+	GLfloat currentFrame = glfwGetTime();
+	float deltaTime = currentFrame - lastFrame;
+	lastFrame = currentFrame;
+	doMovement(deltaTime);
+	return deltaTime;
+}
 
-		-1.0,  1.0, -1.0, 
-		-1.0,  1.0,  1.0, 
-		 1.0,  1.0,  1.0, 
-		 1.0,  1.0,  1.0, 
-		 1.0,  1.0, -1.0, 
-		-1.0,  1.0, -1.0, 
+vec3 *getRandomPositions(vec3 *positions, int numDraws) {
+	float degToRad = M_PI / 180.0;
+	float innerRad = 32.5;
+	float width = 15.0;
+	float height = 1.0;
+	
+	for(int i = 0; i < numDraws; i++){
+		float deg = i * degToRad;
+		positions[i].x = cos(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
+		positions[i].y = sin(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
+		positions[i].z = -(((float)rand()/(float)(RAND_MAX)) * height);
+	}
+	
+	return positions;
+}
 
-		-1.0, -1.0,  1.0, 
-		 1.0, -1.0,  1.0, 
-		 1.0,  1.0,  1.0, 
-		 1.0,  1.0,  1.0, 
-		-1.0,  1.0,  1.0, 
-		-1.0, -1.0,  1.0, 
-
-		 1.0, -1.0, -1.0, 
-		 1.0,  1.0, -1.0, 
-		 1.0,  1.0,  1.0, 
-		 1.0,  1.0,  1.0, 
-		 1.0, -1.0,  1.0, 
-		 1.0, -1.0, -1.0, 
-
-		-1.0, -1.0,  1.0, 
-		-1.0,  1.0,  1.0, 
-		-1.0,  1.0, -1.0, 
-		-1.0,  1.0, -1.0, 
-		-1.0, -1.0, -1.0, 
-		-1.0, -1.0,  1.0, 
-
-		-1.0,  1.0, -1.0, 
-		 1.0,  1.0, -1.0, 
-		 1.0, -1.0, -1.0, 
-		 1.0, -1.0, -1.0, 
-		-1.0, -1.0, -1.0, 
-		-1.0,  1.0, -1.0
-    };
-    GLfloat texCoords[] = {
-    	1.0f, 0.0f,
-    	0.0f, 1.0f,
-		1.0f, 1.0f,
-        1.0f, 1.0f,
-        1.0f, 0.0f,
-        0.0f, 0.0f,
-        
-        0.0f, 0.0f,
-    	0.0f, 1.0f,
-		1.0f, 1.0f,
-        1.0f, 1.0f,
-        1.0f, 0.0f,
-        0.0f, 0.0f,
-        
-        0.0f, 0.0f,
-    	0.0f, 1.0f,
-		1.0f, 1.0f,
-        1.0f, 1.0f,
-        1.0f, 0.0f,
-        0.0f, 0.0f,
-        
-        0.0f, 0.0f,
-    	0.0f, 1.0f,
-		1.0f, 1.0f,
-        1.0f, 1.0f,
-        1.0f, 0.0f,
-        0.0f, 0.0f,
-        
-        0.0f, 0.0f,
-    	0.0f, 1.0f,
-		1.0f, 1.0f,
-        1.0f, 1.0f,
-        1.0f, 0.0f,
-        0.0f, 0.0f,
-        
-        0.0f, 0.0f,
-    	0.0f, 1.0f,
-		1.0f, 1.0f,
-        1.0f, 1.0f,
-        1.0f, 0.0f,
-        0.0f, 0.0f
-    };
-    
-    int numVertices = (sizeof(vertices)/sizeof(vertices[0]));
-    int numTexCoords = (sizeof(texCoords)/sizeof(texCoords[0]));
-	int vecSize = numVertices/3;
-	int texSize = numTexCoords/2;
-    
-    vec3 vertArray[vecSize];
-    vec3 normArray[vecSize];
-    vec2 texArray[texSize];
-    int c = 0;
-    for(int i = 0; i < numVertices; i+=3) {
-    	vertArray[c].x = vertices[i];
-    	vertArray[c].y = vertices[i+1];
-    	vertArray[c].z = vertices[i+2];
-    	c++;
-    }
-    c = 0;
-    for(int i = 0; i < numTexCoords; i+=2) {
-    	texArray[c].x = texCoords[i];
-    	texArray[c].y = texCoords[i+1];
-    	c++;
-    }
-    *normArray = *generateNormals(normArray, vertices, numVertices);
-    vec3 vna[vecSize];
-	*vna = *generateSmoothNormals(vna, vertArray, normArray, vecSize);
-    vao = initBuffers(vertArray, sizeof(vertices), vna, sizeof(vertices), texArray, sizeof(texCoords));    
-    return vao;
+mat4 *getRandomRotations(mat4 *rotations, int numDraws) {
+	vec3 xAxis = {1.0, 0.0, 0.0};
+	vec3 yAxis = {0.0, 1.0, 0.0};
+	vec3 zAxis = {0.0, 0.0, 1.0};
+	
+	quaternion xRot[numDraws], yRot[numDraws];
+	for(int i = 0; i < numDraws; i++){
+		xRot[i] = angleAxis((-(((float)rand()/(float)(RAND_MAX)) * M_PI)), xAxis, zAxis);
+		yRot[i] = angleAxis((-(((float)rand()/(float)(RAND_MAX)) * M_PI)), yAxis, zAxis);
+	}
+	
+	for(int i = 0; i < numDraws; i++) {
+		rotations[i] = quaternionToRotation(quatMultiply(xRot[i], yRot[i]));
+	}
+	
+	return rotations;
 }
 
 int main(int argc, char *argv[]) 
 {
 	float theta = 0.0;
-	GLfloat deltaTime = 0.0;
-	GLfloat lastFrame = 0.0;
 	chdir("/Users/tjgreen/Documents/OpenGL/gl_tests/terrain");
 	GLFWwindow *window = setupGLFW();
 
@@ -962,7 +946,8 @@ int main(int argc, char *argv[])
 	
 	GLuint quadCubeVAO = initQuadCube(25);
 	
-	GLuint framebuffer = initFramebuffer();
+	GLuint framebuffer = initFramebuffer(&textureColorBuffer);
+	GLuint sunFramebuffer = initFramebuffer(&sunNoiseTexture);
 	//GLuint framebuffer3D = initFramebuffer3D();
 	GLuint quadVAO = initQuad();
 	GLuint sNoiseVAO = initNoise();
@@ -970,79 +955,22 @@ int main(int argc, char *argv[])
 	GLuint permTexture = initPermTexture();
 	GLuint simplexTexture = initSimplexTexture();
 	GLuint gradTexture = initGradTexture();
-	
-	vec3 lookAt[6] = {{1.0, 0.0, 0.0}, {-1.0, 0.0, 0.0},{0.0, 1.0, 0.0},
-					{0.0, -1.0, 0.0},{0.0, 0.0, -1.0},{0.0, 0.0, 1.0}};
-	vec4 lightPosition = {0.0, 0.0, 0.0, 1.0};
-	
-	mat4 shadowProjection = perspective(90.0, 1024.0/1024.0, zNear, zFar);
-	mat4 lightSpaceMatrix[6];
-	vec3 s0 = {-1.0, 1.0, 1.0};
-	lightSpaceMatrix[0] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s0) ,getLookAtMatrix(lightPosition, lookAt[0])));
-	vec3 s1 = {1.0, 1.0, 1.0};
-	lightSpaceMatrix[1] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s1) ,getLookAtMatrix(lightPosition, lookAt[1])));
-	vec3 s2 = {-1.0, 1.0, 1.0};
-	lightSpaceMatrix[2] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s2) ,getLookAtMatrix(lightPosition, lookAt[2])));
-	vec3 s3 = {1.0, 1.0, 1.0};
-	lightSpaceMatrix[3] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s3) ,getLookAtMatrix(lightPosition, lookAt[3])));
-	vec3 s4 = {-1.0, 1.0, 1.0};
-	lightSpaceMatrix[4] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s4) ,getLookAtMatrix(lightPosition, lookAt[4])));
-	vec3 s5 = {1.0, 1.0, 1.0};
-	lightSpaceMatrix[5] = multiplymat4(shadowProjection, multiplymat4(scalevec3(s5) ,getLookAtMatrix(lightPosition, lookAt[5])));
-	
-	GLuint cubeVAO = initCube();
-	
+
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 	
-	clock_t start,end;
-	float time_spent;
-	start=clock();
-	//glViewport(0, 0, 512, 512);
-	//glViewport(0, 0, getWindowWidth(), getWindowHeight());
-	
-	float degToRad = M_PI / 180.0;
-	float innerRad = 32.5;
-	float width = 15.0;
-	float height = 1.0;
 	int instancedDraws = 720;
+	
 	vec3 pos1[instancedDraws];
-	for(int i = 0; i < instancedDraws; i++){
-		float deg = i * degToRad;
-		pos1[i].x = cos(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
-		pos1[i].y = sin(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
-		pos1[i].z = -(((float)rand()/(float)(RAND_MAX)) * height);
-	}
+	*pos1 = *getRandomPositions(pos1, instancedDraws);
 	vec3 pos2[instancedDraws];
-	for(int i = 0; i < instancedDraws; i++){
-		float deg = i * degToRad;
-		pos2[i].x = cos(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
-		pos2[i].y = sin(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
-		pos2[i].z = -(((float)rand()/(float)(RAND_MAX)) * height);
-	}
+	*pos2 = *getRandomPositions(pos2, instancedDraws);
 	vec3 pos3[instancedDraws];
-	for(int i = 0; i < instancedDraws; i++){
-		float deg = i * degToRad;
-		pos3[i].x = cos(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
-		pos3[i].y = sin(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
-		pos3[i].z = -(((float)rand()/(float)(RAND_MAX)) * height);
-	}
-	
-	vec3 xAxis = {1.0, 0.0, 0.0};
-	vec3 yAxis = {0.0, 1.0, 0.0};
-	vec3 zAxis = {0.0, 0.0, 1.0};
-	
-	quaternion xRot[instancedDraws], yRot[instancedDraws];
-	for(int i = 0; i < instancedDraws; i++){
-		xRot[i] = angleAxis((-(((float)rand()/(float)(RAND_MAX)) * M_PI)), xAxis, zAxis);
-		yRot[i] = angleAxis((-(((float)rand()/(float)(RAND_MAX)) * M_PI)), yAxis, zAxis);
-	}
+	*pos3 = *getRandomPositions(pos3, instancedDraws);
 	
 	mat4 rotations[instancedDraws];
-	for(int i = 0; i < instancedDraws; i++) {
-		rotations[i] = quaternionToRotation(quatMultiply(xRot[i], yRot[i]));//multiplymat4(rotateX(rotXarray[i]), multiplymat4(rotateY(rotYarray[i]), rotateZ(rotZarray[i])));
-	}
+	*rotations = *getRandomRotations(rotations, instancedDraws);
 	
 	float scaleArray[instancedDraws];
 	for(int i = 0; i < instancedDraws; i++){
@@ -1052,45 +980,36 @@ int main(int argc, char *argv[])
 	GLuint positionsVBO;
 	glGenBuffers(1, &positionsVBO);
 	
-	end=clock();
-	time_spent=(((float)end - (float)start) / 1000000.0F );
-	printf("\nSystem time is at %f seconds\n", time_spent);
-	
 	mat4 model, atmo;
 	glViewport(0, 0, getWindowWidth(), getWindowHeight());
 	
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		drawNoise(sNoiseVAO, noiseRenderShader, 6, permTexture, simplexTexture, gradTexture);
+		drawNoise(sNoiseVAO, noiseRenderShader, 6, permTexture, simplexTexture, gradTexture, 0);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	
-	float fpsFrames = 0.0;
-	float lastTime = 0.0;
+	float deltaTime = 0.0;
+	float lastFrame = 0.0;
+	float rad = 180.0 / M_PI;
+	vec3 translation = {65.0, 0.0, 0.0};
 	while(!glfwWindowShouldClose(window))
-	{
-		//createCube(10, &qc2);
-		//free(qc2.points);
-		//free(qc2.normals);
+	{	
 		theta += 0.5;
+		glClearColor(0.1, 0.0, 0.2, 1.0);
 		GLfloat currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
 		doMovement(deltaTime);
-		glClearColor(0.1, 0.0, 0.2, 1.0);
 		
-		fpsFrames++;
-		if(currentFrame - lastTime >= 1.0)
-		{
-			//printf("%f\r", fpsFrames);
-			fpsFrames = 0.0;
-			lastTime += 1.0;
-		}
+		glBindFramebuffer(GL_FRAMEBUFFER, sunFramebuffer);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			drawNoise(sNoiseVAO, noiseRenderShader, 6, permTexture, simplexTexture, gradTexture, 1);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		
-		vec3 translation = {65.0, 0.0, 0.0};
 		float fScale = 63.710;
 		float fScaleFactor = 1.25;
 		
-		int terrainMaxLOD = (int)(log(fScale)/log(2));
+		//int terrainMaxLOD = (int)(log(fScale)/log(2));
 		
 		/*glBindFramebuffer(GL_FRAMEBUFFER, depthbuffer);
 			glClear(GL_DEPTH_BUFFER_BIT);
@@ -1099,38 +1018,42 @@ int main(int argc, char *argv[])
 			model = multiplymat4(translatevec3(translation), scale(fScale));
 			draw(sphereVAO, depthShader, planet.vertexNumber, earthTex, model, translation);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);*/
+		//printf("%f, %f, %f\n", lightPosition.x, lightPosition.y, lightPosition.z);
 		
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 		glClearColor(1.0, 1.0, 1.0, 1.0);
 		
-		//drawNoise(sNoiseVAO, noiseRenderShader, 6, permTexture, simplexTexture, gradTexture);
-		model = multiplymat4(translate(-10.0, 0.0, 0.0), multiplymat4(rotateX(theta), rotateY(theta)));
-		draw(cubeVAO, ringShader, 36, earthTex, model, translation);
+		vec4 lightPosition = rotateLight(quadCubeVAO, ringShader, qc.vertexNumber, sunNoiseTexture, theta, translation);
+		vec3 d = {lightPosition.x - 0.0, lightPosition.y - 0.0, lightPosition.z - 0.0};
+		d = normalizevec3(d);
 		
 		model = multiplymat4(translate(-25.0, 5.0, 5.0), scale(10.0));
-		draw(quadCubeVAO, ringShader, qc.vertexNumber, moonTex, model, translation);
+		draw(quadCubeVAO, ringShader, qc.vertexNumber, moonTex, model, translation, lightPosition);
 		
-		//model = multiplymat4(multiplymat4(translatevec3(translation), rotateX(65.0)), scale(fScale*1.5));
-		model = multiplymat4(translatevec3(translation), scale(fScale*1.5));
-		draw(ringVAO, ringShader, planetRing.vertexNumber, ringTex, model, translation);
+		//draw(quadCubeVAO, ringShader, qc.vertexNumber, sunNoiseTexture, model, translation);
+		drawOrbit(quadCubeVAO, ringShader, qc.vertexNumber, moonTex, theta, model, translation);
+		
+		model = multiplymat4(multiplymat4(translatevec3(translation), rotateX(65.0)), scale(fScale*1.5));
+		//model = multiplymat4(translatevec3(translation), scale(fScale*1.5));
+		draw(ringVAO, ringShader, planetRing.vertexNumber, ringTex, model, translation, lightPosition);
 		model = multiplymat4(translatevec3(translation), scale(fScale));
 		drawTess(quadCubeVAO, tessShader, qc.vertexNumber, textureColorBuffer, model, translation);
 		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
-		drawAtmoshere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor);
+		drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
 		
 		model = multiplymat4(translate(-75.0, 25.0, 0.0), scale(10.0));
-		draw(quadVAO, fboShader, 6, textureColorBuffer, model, translation);
+		draw(quadVAO, fboShader, 6, textureColorBuffer, model, translation, lightPosition);
 		
 		//vec4 cc = getCameraPosition(translate(-10.0, 0.0, 0.0));
 		
 		//model = multiplymat4(multiplymat4(translate(cc.x, cc.y, cc.z), scale(1.0)), getViewRotation());
 		model = multiplymat4(translate(-75.0, 25.0, 0.0), scale(2.0));
-		draw(objectVAO, ringShader, object.vertexNumber, earthTex, model, translation);
+		draw(objectVAO, ringShader, object.vertexNumber, earthTex, model, translation, lightPosition);
 		
 		glUseProgram(instanceShader);
-		drawInstanced(rockVAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos1, rotations, model, scaleArray, theta);
-		drawInstanced(rock2VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos2, rotations, model, scaleArray, theta);
-		drawInstanced(rock3VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos3, rotations, model, scaleArray, theta);
+		drawInstanced(rockVAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos1, rotations, model, scaleArray, theta, lightPosition);
+		drawInstanced(rock2VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos2, rotations, model, scaleArray, theta, lightPosition);
+		drawInstanced(rock3VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos3, rotations, model, scaleArray, theta, lightPosition);
 		
 		glfwPollEvents();
 		glfwSwapBuffers(window);
