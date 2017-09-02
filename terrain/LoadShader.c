@@ -30,7 +30,7 @@ GLuint LoadShader(char *shaderPath, int shaderType)
 	
 	char *shaderStr = readShader(shaderPath);
 	
-	printf("Compiling %d shader\n", shaderType);
+	printf("Compiling %d, %s shader\n", shaderType, shaderPath);
 	GLint length = strlen(shaderStr);
 	glShaderSource(shader, 1, (const char **)&shaderStr, &length);
 	glCompileShader(shader);

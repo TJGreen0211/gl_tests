@@ -7,11 +7,11 @@
 float zNear = 0.5, zFar = 100000.0;
 int mousePosX, mousePosY, actionPress, keys;
 GLuint depthMap, textureColorBuffer, textureColorBuffer3D, sunNoiseTexture;
-GLuint depthCubemap;
 struct sphere planet;
 struct obj object;
 struct ring planetRing;
 struct quadCube qc, qc2;
+mat4 lightView;
 
 int perm[256]= {151,160,137,91,90,15,
   131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
@@ -287,14 +287,8 @@ GLuint initLightingShader() {
 
 GLuint initDepthShader() {
 	GLuint shader;
-	GLuint vertShader = LoadShader("shaders/depth.vert", GL_VERTEX_SHADER);
-	GLuint geomShader = LoadShader("shaders/depth.geom", GL_GEOMETRY_SHADER);
-	GLuint fragShader = LoadShader("shaders/depth.frag", GL_FRAGMENT_SHADER);
-	shader = glCreateProgram();
-	glAttachShader(shader, vertShader);
-	glAttachShader(shader, geomShader);
-	glAttachShader(shader, fragShader);
-	glLinkProgram(shader);
+	createShader(&shader, "shaders/depth.vert",
+		"shaders/depth.frag");
 	
 	return shader;
 }
@@ -431,30 +425,13 @@ GLuint initFramebuffer3D() {
 	return fbo;
 }
 
-GLuint initDepthBuffer() {
+GLuint initDepthbuffer() {
 	GLuint fbo;
 	glGenFramebuffers(1, &fbo);
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-	vec2 size = {getWindowWidth(), getWindowWidth()};
+	vec2 size = {getWindowWidth(), getWindowHeight()};
 	depthMap = generateTextureAttachment(1, 0, size);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
-	GLuint status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-	  if(status != GL_FRAMEBUFFER_COMPLETE)
-		  printf("GL_FRAMEBUFFER_COMPLETE failed, CANNOT use FBO\n");
-	
-	glDrawBuffer(GL_NONE);
-	glReadBuffer(GL_NONE);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	
-	return fbo;
-}
-
-GLuint initCubeDepthbuffer() {
-	GLuint fbo;
-	glGenFramebuffers(1, &fbo);
-	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-	depthCubemap = generateDepthCubemap(1024, 1024);
-	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthCubemap, 0);
 	GLuint status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	  if(status != GL_FRAMEBUFFER_COMPLETE)
 		  printf("GL_FRAMEBUFFER_COMPLETE failed, CANNOT use FBO\n");
@@ -786,7 +763,7 @@ void drawNoise(GLuint vao, GLuint shader, int vertices, GLuint permTexture, GLui
 	glEnable(GL_DEPTH_TEST); 
 }
 
-void draw(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, vec3 position, vec4 lightPosition) {
+void draw(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, vec3 position, vec4 lightPosition, mat4 lightSpaceMatrix) {
 	glDisable(GL_CULL_FACE);
 	//glEnable(GL_CULL_FACE);
 	//glEnable(GL_BLEND);
@@ -799,9 +776,13 @@ void draw(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, vec3 
 	
 	glUniform3f(glGetUniformLocation(shader, "cameraPos"), camPosition.x, camPosition.y, camPosition.z);
 	glUniform3f(glGetUniformLocation(shader, "lightPosition"), lightPosition.x, lightPosition.y, lightPosition.z);
+	glUniformMatrix4fv(glGetUniformLocation(shader, "lightSpace"), 1, GL_FALSE, &lightSpaceMatrix.m[0][0]);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glUniform1i(glGetUniformLocation(shader, "texture1"), 0);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, depthMap);
+	glUniform1i(glGetUniformLocation(shader, "depthMap"), 1);
 	glDrawArrays(GL_TRIANGLES, 0, vertices);
 	glBindVertexArray(0);
 	glEnable(GL_CULL_FACE);
@@ -817,9 +798,9 @@ vec4 rotateLight(GLuint vao, GLuint shader, int vertices, GLuint texture, float 
 	vec4 camPosition = getCameraPosition(positionMatrix);
 	
 	vec3 translation;
-	translation.x = (400.0) * cos(theta/75.0);
+	translation.x = (0.0);// * cos(theta/75.0);
 	translation.y = 0.0;
-	translation.z = (400.0) * sin(theta/75.0);
+	translation.z = (-400.0);// * sin(theta/75.0);
 
 	mat4 model = multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(translation)), scale(15.0)),rotateX(90.0));
 	initMVP(shader, model, getViewMatrix());
@@ -857,6 +838,15 @@ void drawOrbit(GLuint vao, GLuint shader, int vertices, GLuint texture, float th
 	glUniform1i(glGetUniformLocation(shader, "texture1"), 0);
 	glDrawArrays(GL_TRIANGLES, 0, vertices);
 	glBindVertexArray(0);
+}
+
+void drawDepth(GLuint vao, GLuint shader, int vertices, vec4 lightPosition, mat4 m, mat4 l) {
+	glUseProgram(shader);
+	glBindVertexArray(vao);
+	initMVP(shader, m, l);
+	glUniformMatrix4fv(glGetUniformLocation(shader, "lightSpace"), 1, GL_FALSE, &l.m[0][0]);
+	glUniform3f(glGetUniformLocation(shader, "lightPosition"), lightPosition.x, lightPosition.y, lightPosition.z);
+	glDrawArrays(GL_TRIANGLES, 0, vertices);
 	glBindVertexArray(0);
 }
 
@@ -928,24 +918,24 @@ int main(int argc, char *argv[])
 	GLuint skyShader = initSkyShader();
 	GLuint atmosphereShader = initAtmosphereShader();
 	GLuint ringShader = initLightingShader();
-	//GLuint depthShader = initDepthShader();
+	GLuint depthShader = initDepthShader();
 	GLuint fboShader = initFramebufferShader();
 	GLuint noiseRenderShader = initNoiseShader();
 	GLuint instanceShader = initInstanceShader();
 	
-	//GLuint depthbuffer = initCubeDepthbuffer();
 	GLuint earthTex = loadTexture("shaders/earth.jpg", 0);
 	GLuint moonTex = loadTexture("shaders/moon.jpg", 0);
 	GLuint ringTex = loadTexture("shaders/ring.png", 1);
 	GLuint sphereVAO = initSphere();
 	GLuint ringVAO = initRing();
-	GLuint objectVAO = initObjectBuffer();
+	//GLuint objectVAO = initObjectBuffer();
 	GLuint rockVAO = initRockBuffer("shaders/rock.obj");
 	GLuint rock2VAO = initRockBuffer("shaders/rock2.obj");
 	GLuint rock3VAO = initRockBuffer("shaders/rock3.obj");
 	
 	GLuint quadCubeVAO = initQuadCube(25);
 	
+	GLuint depthbuffer = initDepthbuffer();
 	GLuint framebuffer = initFramebuffer(&textureColorBuffer);
 	GLuint sunFramebuffer = initFramebuffer(&sunNoiseTexture);
 	//GLuint framebuffer3D = initFramebuffer3D();
@@ -983,78 +973,105 @@ int main(int argc, char *argv[])
 	mat4 model, atmo;
 	glViewport(0, 0, getWindowWidth(), getWindowHeight());
 	
-	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+	/*glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		drawNoise(sNoiseVAO, noiseRenderShader, 6, permTexture, simplexTexture, gradTexture, 0);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);*/
 	
 	float deltaTime = 0.0;
 	float lastFrame = 0.0;
 	float rad = 180.0 / M_PI;
 	vec3 translation = {65.0, 0.0, 0.0};
+	mat4 lightProjection = ortho(-400.0, 400.0, -400.0, 400.0, zNear, zFar);
+	//mat4 lightProjection = perspective(90.0, getWindowWidth()/getWindowHeight(), zNear, zFar);
 	while(!glfwWindowShouldClose(window))
 	{	
 		theta += 0.5;
-		glClearColor(0.1, 0.0, 0.2, 1.0);
+
 		GLfloat currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
 		doMovement(deltaTime);
 		
-		glBindFramebuffer(GL_FRAMEBUFFER, sunFramebuffer);
+		/*glBindFramebuffer(GL_FRAMEBUFFER, sunFramebuffer);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			drawNoise(sNoiseVAO, noiseRenderShader, 6, permTexture, simplexTexture, gradTexture, 1);
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);*/
 		
 		float fScale = 63.710;
 		float fScaleFactor = 1.25;
 		
 		//int terrainMaxLOD = (int)(log(fScale)/log(2));
-		
-		/*glBindFramebuffer(GL_FRAMEBUFFER, depthbuffer);
-			glClear(GL_DEPTH_BUFFER_BIT);
-			model = multiplymat4(multiplymat4(translatevec3(translation), rotateX(65.0)), scale(fScale*1.5));
-			draw(ringVAO, depthShader, planetRing.vertexNumber, ringTex, model, translation);
-			model = multiplymat4(translatevec3(translation), scale(fScale));
-			draw(sphereVAO, depthShader, planet.vertexNumber, earthTex, model, translation);
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);*/
 		//printf("%f, %f, %f\n", lightPosition.x, lightPosition.y, lightPosition.z);
 		
-		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-		glClearColor(1.0, 1.0, 1.0, 1.0);
+		//glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+		//glClearColor(1.0, 1.0, 1.0, 1.0);
 		
+		//Light calculations per frame
 		vec4 lightPosition = rotateLight(quadCubeVAO, ringShader, qc.vertexNumber, sunNoiseTexture, theta, translation);
-		vec3 d = {lightPosition.x - 0.0, lightPosition.y - 0.0, lightPosition.z - 0.0};
+		vec3 d = {lightPosition.x - translation.x, lightPosition.y - translation.y, lightPosition.z - translation.z};
 		d = normalizevec3(d);
+		float lightYaw = asin(-d.y) * rad;
+		float lightPitch = atan2(d.x, -d.z) * rad;
+		//printf("yaw:%f, pitch:%f\n", lightYaw, lightPitch);
+		mat4 rxry = multiplymat4(rotateX(lightYaw), rotateY(lightPitch));
+		vec4 negativeLight = {lightPosition.x, lightPosition.y, lightPosition.z, lightPosition.w};
+		lightView = multiplymat4(rxry, translatevec4(negativeLight));
+		mat4 lightSpaceMatrix = multiplymat4(lightProjection, lightView);
+		
+		glBindFramebuffer(GL_FRAMEBUFFER, depthbuffer);
+			glClear(GL_DEPTH_BUFFER_BIT);
+			vec3 position;
+			position.x = (200.0) * cos(theta/100.0);
+			position.y = 0.0;
+			position.z = (200.0) * sin(theta/100.0);
+			mat4 positionMatrix = translatevec3(translation);
+			model = multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(position)), scale(10.0)),rotateX(90.0));
+			drawDepth(quadCubeVAO, depthShader, qc.vertexNumber, lightPosition, model, lightSpaceMatrix);
+			model = multiplymat4(multiplymat4(translatevec3(translation), rotateX(80.0)), scale(fScale*1.5));
+			glDisable(GL_CULL_FACE);
+			drawDepth(ringVAO, depthShader, planetRing.vertexNumber, lightPosition, model, lightSpaceMatrix);
+			glEnable(GL_CULL_FACE);
+			model = multiplymat4(translatevec3(translation), scale(fScale));
+			drawDepth(quadCubeVAO, depthShader, qc.vertexNumber, lightPosition, model, lightSpaceMatrix);
+			model = multiplymat4(translate(25.0, 0.0, -90.0), scale(10.0));
+			drawDepth(quadVAO, depthShader, 6, lightPosition, model, lightSpaceMatrix);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		
+		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+		glClearColor(0.1, 0.0, 0.2, 1.0);
 		
 		model = multiplymat4(translate(-25.0, 5.0, 5.0), scale(10.0));
-		draw(quadCubeVAO, ringShader, qc.vertexNumber, moonTex, model, translation, lightPosition);
+		//draw(quadCubeVAO, ringShader, qc.vertexNumber, moonTex, model, translation, lightPosition);
 		
 		//draw(quadCubeVAO, ringShader, qc.vertexNumber, sunNoiseTexture, model, translation);
 		drawOrbit(quadCubeVAO, ringShader, qc.vertexNumber, moonTex, theta, model, translation);
 		
-		model = multiplymat4(multiplymat4(translatevec3(translation), rotateX(65.0)), scale(fScale*1.5));
+		model = multiplymat4(multiplymat4(translatevec3(translation), rotateX(80.0)), scale(fScale*1.5));
 		//model = multiplymat4(translatevec3(translation), scale(fScale*1.5));
-		draw(ringVAO, ringShader, planetRing.vertexNumber, ringTex, model, translation, lightPosition);
+		draw(ringVAO, ringShader, planetRing.vertexNumber, ringTex, model, translation, lightPosition, lightSpaceMatrix);
 		model = multiplymat4(translatevec3(translation), scale(fScale));
-		drawTess(quadCubeVAO, tessShader, qc.vertexNumber, textureColorBuffer, model, translation);
-		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
-		drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
+		//drawTess(quadCubeVAO, tessShader, qc.vertexNumber, textureColorBuffer, model, translation);
+		draw(quadCubeVAO, ringShader, qc.vertexNumber, earthTex, model, translation, lightPosition, lightSpaceMatrix);
+		//atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
+		//drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
+		model = multiplymat4(translate(25.0, 0.0, -90.0), scale(10.0));
+		draw(quadVAO, ringShader, 6, depthMap, model, translation, lightPosition, lightSpaceMatrix);
 		
 		model = multiplymat4(translate(-75.0, 25.0, 0.0), scale(10.0));
-		draw(quadVAO, fboShader, 6, textureColorBuffer, model, translation, lightPosition);
+		draw(quadVAO, fboShader, 6, depthMap, model, translation, lightPosition, lightSpaceMatrix);
 		
 		//vec4 cc = getCameraPosition(translate(-10.0, 0.0, 0.0));
 		
 		//model = multiplymat4(multiplymat4(translate(cc.x, cc.y, cc.z), scale(1.0)), getViewRotation());
-		model = multiplymat4(translate(-75.0, 25.0, 0.0), scale(2.0));
-		draw(objectVAO, ringShader, object.vertexNumber, earthTex, model, translation, lightPosition);
+		//model = multiplymat4(translate(-75.0, 25.0, 0.0), scale(2.0));
+		//draw(objectVAO, ringShader, object.vertexNumber, earthTex, model, translation, lightPosition);
 		
-		glUseProgram(instanceShader);
+		/*glUseProgram(instanceShader);
 		drawInstanced(rockVAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos1, rotations, model, scaleArray, theta, lightPosition);
 		drawInstanced(rock2VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos2, rotations, model, scaleArray, theta, lightPosition);
 		drawInstanced(rock3VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos3, rotations, model, scaleArray, theta, lightPosition);
-		
+		*/
 		glfwPollEvents();
 		glfwSwapBuffers(window);
 	}

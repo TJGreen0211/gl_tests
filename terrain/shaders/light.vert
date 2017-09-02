@@ -7,14 +7,17 @@ layout (location = 2) in vec2 vTexCoords;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+uniform mat4 lightSpace;
 uniform vec3 cameraPos;
 uniform vec3 lightPosition;
 
-out vec2 fTexCoords;
+out vec4 fLightSpace;
+out vec3 fragPos;
 out vec3 fE;
 out vec3 fN;
 out vec3 fL;
 out vec3 fH;
+out vec2 fTexCoords;
 
 void main()
 {	
@@ -29,6 +32,8 @@ void main()
 	fL = -normalize(lightDir);
 	fH = -normalize((vPosition*model - lightPos) + ray).xyz;
 	
+	fLightSpace = vPosition*model*lightSpace;
+	fragPos = vec3(vPosition*model).xyz;
 	fTexCoords = vTexCoords;
 	
 	//vColor = vec3(1.0, 0.5, 0.2);
