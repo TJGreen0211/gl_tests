@@ -15,34 +15,35 @@ uniform sampler2D texture1;
 uniform sampler2D depthMap;
 
 /*
-float bias = max(0.9 * (1.0 - dot(fN, fL)), 0.5);
-vec3 projCoords = fLight.xyz/fLight.w;
-projCoords = projCoords * 0.5 + 0.5;
-float closestDepth = texture(depthMap, projCoords.xy).r;
-float currentDepth = projCoords.z;
+fLight.xyz = fLight.xyz * 0.5 + 0.5;
+float closestDepth = texture(depthMap, fLight.xy).r;
+float currentDepth = fLight.z;
 float shadow = 0.0;
 vec2 texelSize = 1.0 / textureSize(depthMap, 0);
 for(int x = -1; x <= 1; ++x) {
 	for(int y = -1; y <= 1; ++y) {
-		float pcfDepth = texture(depthMap, projCoords.xy + vec2(x, y) * texelSize).r;
+		float pcfDepth = texture(depthMap, fLight.xy + vec2(x, y) * texelSize).r;
 		shadow += currentDepth - 0.0001 > pcfDepth ? 1.0 : 0.0;
 	}
 }
 shadow /= 9.0;
 
-if(projCoords.z > 1.0)
+if(fLight.z > 1.0)
 	shadow = 0.0;
 return shadow;
 */
 
 float shadowCalculation(vec4 fLight) {
-	vec3 fragToLight = lightPosition - fragPos;
-	fragToLight = fLight.xyz * 0.5 + 0.5;
-	float currentDepth = length(fragToLight);
+	vec3 fragToLight = fragPos - lightPosition;
+	//fragToLight = fLight.xyz * 0.5 + 0.5;
+	//fragToLight = fragToLight/700.0;
 	float closestDepth = texture(depthMap, fragToLight.xy).r;
-	//closestDepth *= 2.0;
+	float currentDepth = length(fragToLight)/700.0;
+	//closestDepth *= 700.0;
 	
-	float shadow = currentDepth - 0.1 > closestDepth ? 1.0 : 0.0;
+	float shadow = currentDepth - 0.00001 > closestDepth ? 1.0 : 0.0;
+	//if(fragToLight.z > 1.0)
+	//	shadow = 0.0;
 	
 	return shadow;
 }
@@ -68,7 +69,7 @@ void main()
 	vec3 lighting = (ambient * (diffuse+specular));
 	float gamma = 2.2;
 	float shadow = shadowCalculation(fLightSpace);
-	FragColor = vec4(pow(ambient+(1.0-shadow)*(diffuse+specular), vec3(1.0/gamma)), color.a);
+	//FragColor = vec4(pow(ambient+(1.0-shadow)*(diffuse+specular), vec3(1.0/gamma)), color.a);
 	//vec3 lighting = (ambient+(1.0-shadow) * (diffuse+specular));
-	//FragColor = vec4(lighting, 1.0);
+	FragColor = vec4(vec3(shadow), 1.0);
 }

@@ -1034,8 +1034,8 @@ int main(int argc, char *argv[])
 			glEnable(GL_CULL_FACE);
 			model = multiplymat4(translatevec3(translation), scale(fScale));
 			drawDepth(quadCubeVAO, depthShader, qc.vertexNumber, lightPosition, model, lightSpaceMatrix);
-			model = multiplymat4(translate(25.0, 0.0, -90.0), scale(10.0));
-			drawDepth(quadVAO, depthShader, 6, lightPosition, model, lightSpaceMatrix);
+			//model = multiplymat4(translate(25.0, 0.0, -90.0), scale(10.0));
+			//drawDepth(quadVAO, depthShader, 6, lightPosition, model, lightSpaceMatrix);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
@@ -1055,8 +1055,8 @@ int main(int argc, char *argv[])
 		draw(quadCubeVAO, ringShader, qc.vertexNumber, earthTex, model, translation, lightPosition, lightSpaceMatrix);
 		//atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
 		//drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
-		model = multiplymat4(translate(25.0, 0.0, -90.0), scale(10.0));
-		draw(quadVAO, ringShader, 6, depthMap, model, translation, lightPosition, lightSpaceMatrix);
+		//model = multiplymat4(translate(25.0, 0.0, -90.0), scale(10.0));
+		//draw(quadVAO, ringShader, 6, depthMap, model, translation, lightPosition, lightSpaceMatrix);
 		
 		model = multiplymat4(translate(-75.0, 25.0, 0.0), scale(10.0));
 		draw(quadVAO, fboShader, 6, depthMap, model, translation, lightPosition, lightSpaceMatrix);
