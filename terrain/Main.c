@@ -798,9 +798,9 @@ vec4 rotateLight(GLuint vao, GLuint shader, int vertices, GLuint texture, float 
 	vec4 camPosition = getCameraPosition(positionMatrix);
 	
 	vec3 translation;
-	translation.x = (0.0);// * cos(theta/75.0);
+	translation.x = (-400.0) * cos(theta/75.0);
 	translation.y = 0.0;
-	translation.z = (-400.0);// * sin(theta/75.0);
+	translation.z = (-400.0) * sin(theta/75.0);
 
 	mat4 model = multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(translation)), scale(15.0)),rotateX(90.0));
 	initMVP(shader, model, getViewMatrix());
@@ -993,10 +993,10 @@ int main(int argc, char *argv[])
 		lastFrame = currentFrame;
 		doMovement(deltaTime);
 		
-		/*glBindFramebuffer(GL_FRAMEBUFFER, sunFramebuffer);
+		glBindFramebuffer(GL_FRAMEBUFFER, sunFramebuffer);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			drawNoise(sNoiseVAO, noiseRenderShader, 6, permTexture, simplexTexture, gradTexture, 1);
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);*/
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		
 		float fScale = 63.710;
 		float fScaleFactor = 1.25;
@@ -1009,6 +1009,7 @@ int main(int argc, char *argv[])
 		
 		//Light calculations per frame
 		vec4 lightPosition = rotateLight(quadCubeVAO, ringShader, qc.vertexNumber, sunNoiseTexture, theta, translation);
+		vec3 lightPositionXYZ = {lightPosition.x, lightPosition.y, lightPosition.z};
 		vec3 d = {lightPosition.x - translation.x, lightPosition.y - translation.y, lightPosition.z - translation.z};
 		d = normalizevec3(d);
 		float lightYaw = asin(-d.y) * rad;
@@ -1048,18 +1049,20 @@ int main(int argc, char *argv[])
 		drawOrbit(quadCubeVAO, ringShader, qc.vertexNumber, moonTex, theta, model, translation);
 		
 		model = multiplymat4(multiplymat4(translatevec3(translation), rotateX(80.0)), scale(fScale*1.5));
-		//model = multiplymat4(translatevec3(translation), scale(fScale*1.5));
 		draw(ringVAO, ringShader, planetRing.vertexNumber, ringTex, model, translation, lightPosition, lightSpaceMatrix);
 		model = multiplymat4(translatevec3(translation), scale(fScale));
-		//drawTess(quadCubeVAO, tessShader, qc.vertexNumber, textureColorBuffer, model, translation);
-		draw(quadCubeVAO, ringShader, qc.vertexNumber, earthTex, model, translation, lightPosition, lightSpaceMatrix);
-		//atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
-		//drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
+		drawTess(quadCubeVAO, tessShader, qc.vertexNumber, textureColorBuffer, model, translation);
+		//draw(quadCubeVAO, ringShader, qc.vertexNumber, earthTex, model, translation, lightPosition, lightSpaceMatrix);
+		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
+		drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
 		//model = multiplymat4(translate(25.0, 0.0, -90.0), scale(10.0));
 		//draw(quadVAO, ringShader, 6, depthMap, model, translation, lightPosition, lightSpaceMatrix);
 		
 		model = multiplymat4(translate(-75.0, 25.0, 0.0), scale(10.0));
 		draw(quadVAO, fboShader, 6, depthMap, model, translation, lightPosition, lightSpaceMatrix);
+		
+		model = multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(lightPositionXYZ)), scale(15.0)),rotateX(90.0));
+		draw(quadCubeVAO, ringShader, qc.vertexNumber, sunNoiseTexture, model, lightPositionXYZ, lightPosition, lightSpaceMatrix);
 		
 		//vec4 cc = getCameraPosition(translate(-10.0, 0.0, 0.0));
 		
