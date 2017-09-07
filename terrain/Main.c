@@ -673,27 +673,40 @@ void drawAtmosphere(GLuint VAO, GLuint shader, GLuint sky, int vertices, mat4 m,
 }
 
 void drawInstanced(GLuint vao, GLuint vbo, GLuint shader, int vertexNumber, int drawAmount, vec3 *positions, mat4 *rotations, mat4 model, float *scaleArray, float theta, vec4 lightPosition) {
-	initMVP(shader, model, getViewMatrix());
 	vec4 cameraPos = getCameraPosition(model);
 	
-	vec3 pos[drawAmount];
+	/*for(int i = 0; i < numDraws; i++){
+		float deg = i * degToRad;
+		positions[i].x = cos(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
+		positions[i].y = sin(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
+		positions[i].z = -(((float)rand()/(float)(RAND_MAX)) * height);
+	}*/
+	
+	vec3 translation[drawAmount];
 	for(int i = 0; i < drawAmount; i++){
-		float deg = (theta/50.0)+(i * M_PI / 180.0);
-		pos[i].x = cos(deg)*32.5;//+(-(((float)rand()/(float)(RAND_MAX)) * width));
-		pos[i].y = sin(deg)*32.5;//+(-(((float)rand()/(float)(RAND_MAX)) * width));
-		pos[i].z = 10;//-(((float)rand()/(float)(RAND_MAX)) * height);
+		
+		translation[i].x = (positions[i].x*2.0);// * cos(theta/75.0);
+		translation[i].y = positions[i].y;
+		translation[i].z = (positions[i].z*2.0);// * sin(theta/75.0);
 	}
 	
-	//vec3 center = {65.0, 0.0, 0.0};
-	glfwGetTime();
+	/*vec3 translation;
+	translation.x = (65.0*1.5) * cos(theta/75.0);
+	translation.y = 0.0;
+	translation.z = (65.0*1.5) * sin(theta/75.0);*/
+	vec3 center = {65.0, 0.0, 0.0};
 	
 	mat4 modelArr[vertexNumber];
 	for(int i = 0; i < vertexNumber; i++) {
-		modelArr[i] = multiplymat4(multiplymat4(translate(positions[i].x+65.0/2.0, positions[i].y, positions[i].z), rotations[i]), scale(scaleArray[i]/10.0));
+		//modelArr[i] = multiplymat4(multiplymat4(translatevec3(translation), rotations[i]), scale(scaleArray[i]/10.0));
 		//modelArr[i] = translate(pos[i].x+65.0/2.0, pos[i].y, pos[i].z);
+		modelArr[i] = multiplymat4(multiplymat4(multiplymat4(translatevec3(center), translatevec3(translation[i])), rotations[i]), scale(scaleArray[i]/5.0));
+		//modelArr[i] = multiplymat4(multiplymat4(translate(positions[i].x+65.0/2.0, positions[i].y, positions[i].z), rotations[i]), scale(scaleArray[i]/10.0));
 	}
+	//multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(translation)), scale(15.0)),rotateX(90.0));
 	
 	glBindVertexArray(vao);
+	initMVP(shader, model, getViewMatrix());
 	
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), BUFFER_OFFSET(0));
@@ -876,15 +889,15 @@ float getDeltaTime(float lastFrame) {
 
 vec3 *getRandomPositions(vec3 *positions, int numDraws) {
 	float degToRad = M_PI / 180.0;
-	float innerRad = 32.5;
+	float innerRad = 65.0;
 	float width = 15.0;
 	float height = 1.0;
 	
 	for(int i = 0; i < numDraws; i++){
 		float deg = i * degToRad;
-		positions[i].x = cos(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
-		positions[i].y = sin(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
-		positions[i].z = -(((float)rand()/(float)(RAND_MAX)) * height);
+		positions[i].x = cos(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));//sin(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
+		positions[i].y = -((float)rand()/(float)(RAND_MAX)) * height;
+		positions[i].z = sin(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
 	}
 	
 	return positions;
@@ -973,10 +986,10 @@ int main(int argc, char *argv[])
 	mat4 model, atmo;
 	glViewport(0, 0, getWindowWidth(), getWindowHeight());
 	
-	/*glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		drawNoise(sNoiseVAO, noiseRenderShader, 6, permTexture, simplexTexture, gradTexture, 0);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);*/
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	
 	float deltaTime = 0.0;
 	float lastFrame = 0.0;
@@ -1053,16 +1066,14 @@ int main(int argc, char *argv[])
 		model = multiplymat4(translatevec3(translation), scale(fScale));
 		drawTess(quadCubeVAO, tessShader, qc.vertexNumber, textureColorBuffer, model, translation);
 		//draw(quadCubeVAO, ringShader, qc.vertexNumber, earthTex, model, translation, lightPosition, lightSpaceMatrix);
-		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
-		drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
+		model = multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(lightPositionXYZ)), scale(15.0)),rotateX(90.0));
+		draw(quadCubeVAO, ringShader, qc.vertexNumber, sunNoiseTexture, model, lightPositionXYZ, lightPosition, lightSpaceMatrix);
+		
 		//model = multiplymat4(translate(25.0, 0.0, -90.0), scale(10.0));
 		//draw(quadVAO, ringShader, 6, depthMap, model, translation, lightPosition, lightSpaceMatrix);
 		
 		model = multiplymat4(translate(-75.0, 25.0, 0.0), scale(10.0));
 		draw(quadVAO, fboShader, 6, depthMap, model, translation, lightPosition, lightSpaceMatrix);
-		
-		model = multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(lightPositionXYZ)), scale(15.0)),rotateX(90.0));
-		draw(quadCubeVAO, ringShader, qc.vertexNumber, sunNoiseTexture, model, lightPositionXYZ, lightPosition, lightSpaceMatrix);
 		
 		//vec4 cc = getCameraPosition(translate(-10.0, 0.0, 0.0));
 		
@@ -1070,11 +1081,14 @@ int main(int argc, char *argv[])
 		//model = multiplymat4(translate(-75.0, 25.0, 0.0), scale(2.0));
 		//draw(objectVAO, ringShader, object.vertexNumber, earthTex, model, translation, lightPosition);
 		
-		/*glUseProgram(instanceShader);
+		glUseProgram(instanceShader);
 		drawInstanced(rockVAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos1, rotations, model, scaleArray, theta, lightPosition);
 		drawInstanced(rock2VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos2, rotations, model, scaleArray, theta, lightPosition);
 		drawInstanced(rock3VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos3, rotations, model, scaleArray, theta, lightPosition);
-		*/
+		
+		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
+		drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
+
 		glfwPollEvents();
 		glfwSwapBuffers(window);
 	}
