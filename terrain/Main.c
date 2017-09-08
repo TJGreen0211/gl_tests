@@ -312,13 +312,13 @@ GLuint initTessShader() {
 	GLuint vertShader = LoadShader("shaders/tess.vert", GL_VERTEX_SHADER);
 	GLuint tcshShader = LoadShader("shaders/tess.tcsh", GL_TESS_CONTROL_SHADER);
 	GLuint teshShader = LoadShader("shaders/tess.tesh", GL_TESS_EVALUATION_SHADER);
-	GLuint geomShader = LoadShader("shaders/tess.geom", GL_GEOMETRY_SHADER);
+	//GLuint geomShader = LoadShader("shaders/tess.geom", GL_GEOMETRY_SHADER);
 	GLuint fragShader = LoadShader("shaders/tess.frag", GL_FRAGMENT_SHADER);
 	shader = glCreateProgram();
 	glAttachShader(shader, vertShader);
 	glAttachShader(shader, tcshShader);
 	glAttachShader(shader, teshShader);
-	glAttachShader(shader, geomShader);
+	//glAttachShader(shader, geomShader);
 	glAttachShader(shader, fragShader);
 	glLinkProgram(shader);
 	
@@ -685,9 +685,9 @@ void drawInstanced(GLuint vao, GLuint vbo, GLuint shader, int vertexNumber, int 
 	vec3 translation[drawAmount];
 	for(int i = 0; i < drawAmount; i++){
 		
-		translation[i].x = (positions[i].x*2.0);// * cos(theta/75.0);
+		translation[i].x = (positions[i].x*2.3);// * cos(theta/75.0);
 		translation[i].y = positions[i].y;
-		translation[i].z = (positions[i].z*2.0);// * sin(theta/75.0);
+		translation[i].z = (positions[i].z*2.3);// * sin(theta/75.0);
 	}
 	
 	/*vec3 translation;
@@ -731,7 +731,7 @@ void drawInstanced(GLuint vao, GLuint vbo, GLuint shader, int vertexNumber, int 
 	glBindVertexArray(0);
 }
 
-void drawTess(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, vec3 position) {
+void drawTess(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, vec3 position, vec4 lightPosition) {
 	glUseProgram(shader);
 	initMVP(shader, m, getViewMatrix());
 	glBindVertexArray(vao);
@@ -740,6 +740,7 @@ void drawTess(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, v
 	vec4 camPosition = getCameraPosition(positionMatrix);
 	glUniform3f(glGetUniformLocation(shader, "camPosition"), camPosition.x, camPosition.y, camPosition.z);
 	glUniform3f(glGetUniformLocation(shader, "translation"), position.x, position.y, position.z);
+	glUniform3f(glGetUniformLocation(shader, "lightPosition"), lightPosition.x, lightPosition.y, lightPosition.z);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glUniform1i(glGetUniformLocation(shader, "texture1"), 0);
@@ -1064,7 +1065,7 @@ int main(int argc, char *argv[])
 		model = multiplymat4(multiplymat4(translatevec3(translation), rotateX(80.0)), scale(fScale*1.5));
 		draw(ringVAO, ringShader, planetRing.vertexNumber, ringTex, model, translation, lightPosition, lightSpaceMatrix);
 		model = multiplymat4(translatevec3(translation), scale(fScale));
-		drawTess(quadCubeVAO, tessShader, qc.vertexNumber, textureColorBuffer, model, translation);
+		drawTess(quadCubeVAO, tessShader, qc.vertexNumber, textureColorBuffer, model, translation, lightPosition);
 		//draw(quadCubeVAO, ringShader, qc.vertexNumber, earthTex, model, translation, lightPosition, lightSpaceMatrix);
 		model = multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(lightPositionXYZ)), scale(15.0)),rotateX(90.0));
 		draw(quadCubeVAO, ringShader, qc.vertexNumber, sunNoiseTexture, model, lightPositionXYZ, lightPosition, lightSpaceMatrix);
@@ -1087,7 +1088,8 @@ int main(int argc, char *argv[])
 		drawInstanced(rock3VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos3, rotations, model, scaleArray, theta, lightPosition);
 		
 		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
-		drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
+		//draw(quadCubeVAO, ringShader, qc.vertexNumber, earthTex, atmo, translation, lightPosition, lightSpaceMatrix);
+		//drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
 
 		glfwPollEvents();
 		glfwSwapBuffers(window);
