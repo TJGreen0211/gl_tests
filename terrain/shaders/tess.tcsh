@@ -2,15 +2,10 @@
 layout(vertices = 3) out;
 
 in vec3 tPosition[];
-in float tOffset[];
-in vec2 cTex[];
 out vec3 tcPosition[];
-out vec2 eTex[];
-out float eOffset[];
 
 uniform mat4 model;
 uniform mat4 view;
-uniform mat4 projection;
 uniform vec3 translation;
 
 #define ID gl_InvocationID
@@ -42,7 +37,5 @@ void main()
 	    gl_TessLevelOuter[1] = l-1.0;
 	    gl_TessLevelOuter[2] = l-1.0;
 	}
-	eTex[ID] = cTex[ID];
-	eOffset[ID] = tOffset[ID];
 }
 

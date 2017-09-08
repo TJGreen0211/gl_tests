@@ -6,13 +6,9 @@ out vec4 FragColor;
 /*in vec3 gPatchDistance;
 in vec3 gTriDistance;
 in vec2 fTexCoords;
+*/
 
-in vec3 gE;
-in vec3 gN;
-in vec3 gL;
-in vec3 gH;*/
 in vec3 teNormal;
-in vec3 depth;
 in vec3 tePosition;
 
 uniform mat4 model;
@@ -40,7 +36,7 @@ void main()
 	vec3 lightDir = normalize(vec4(tePosition,1.0)*model - lightPos).xyz;
 	vec3 fragPos = vec3(vec4(tePosition,1.0)*model).xyz;
 	vec3 fE = -normalize(vec4(tePosition,1.0)*model).xyz;
-	vec3 fN = normalize(depth*normalMatrix);
+	vec3 fN = normalize(teNormal*normalMatrix);
 	vec3 fL = -normalize(lightDir);
 	vec3 fH = -normalize((vec4(tePosition,1.0)*model - lightPos) + ray).xyz;
 	
@@ -59,16 +55,11 @@ void main()
 		specular = vec3(0.0, 0.0, 0.0);
 	}
 	//vec3 lighting = (ambient + (1.0 - shadow) *(diffuse+specular));
-	
-	//float Kd = max(dot(fL, fN), 0.0);
-	//float Ks = pow(max(dot(fN, fH), 0.0), shininess);
 
+	//Tessellation Geometry Visualization
 	//float d1 = min(min(gTriDistance.x, gTriDistance.y), gTriDistance.z);
     //float d2 = min(min(gPatchDistance.x, gPatchDistance.y), gPatchDistance.z);
-	vec3 color = vec3(0.2, 0.6, 0.4);
 	//color = amplify(d1, 40, -0.5) * amplify(d2, 60, -0.5) * color;
-	//vec3 texColor = vec3(texture(texture1, fTexCoords));
 
     FragColor = vec4(vec3(ambient + diffuse + specular), 1.0);
-    //FragColor = vec4(depth, 1.0);
 }
