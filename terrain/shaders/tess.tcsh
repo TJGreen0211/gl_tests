@@ -2,7 +2,11 @@
 layout(vertices = 3) out;
 
 in vec3 tPosition[];
+in vec3 tNormal[];
+in vec3 tTangent[];
 out vec3 tcPosition[];
+out vec3 tcNormal[];
+out vec3 tcTangent[];
 
 uniform mat4 model;
 uniform mat4 view;
@@ -31,6 +35,8 @@ void main()
 	//float l = rayLength(camPosition, tPosition[ID]);
 
 	tcPosition[ID] = tPosition[ID];
+	tcNormal[ID] = tNormal[ID];
+	tcTangent[ID] = tTangent[ID];
 	if(ID == 0) {
 		gl_TessLevelInner[0] = l;
 	    gl_TessLevelOuter[0] = l-1.0;

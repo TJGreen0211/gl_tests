@@ -3,6 +3,7 @@
 layout (location = 0) in vec4 vPosition;
 layout (location = 1) in vec3 vNormal;
 layout (location = 2) in vec2 vTexCoords;
+layout (location = 3) in vec3 vTangent;
 
 /*
 uniform mat4 model;
@@ -17,6 +18,8 @@ out vec3 fH;
 */
 
 out vec3 tPosition;
+out vec3 tNormal;
+out vec3 tTangent;
 
 void main()
 {
@@ -32,4 +35,6 @@ void main()
 	*/
 	
 	tPosition = vPosition.xyz;
+	tNormal = vNormal;
+	tTangent = vTangent;
 }

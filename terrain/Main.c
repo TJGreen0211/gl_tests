@@ -285,6 +285,13 @@ GLuint initLightingShader() {
 	return shader;
 }
 
+GLuint initWaterShader() {
+	GLuint shader;
+	createShader(&shader, "shaders/water.vert",
+		"shaders/water.frag");
+	return shader;
+}
+
 GLuint initDepthShader() {
 	GLuint shader;
 	createShader(&shader, "shaders/depth.vert",
@@ -345,6 +352,30 @@ vec3 *generateNormals(vec3 normals[], float *vertices, int size) {
 	return normals;
 }
 
+GLuint initBufferTangents(vec3 *vertices, int vertSize, vec3 *normals, int normSize, vec3 *tangents, int tanSize, vec2 *texCoords, int texSize) {
+	GLuint vbo, vao;
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, vertSize+normSize+texSize+tanSize, NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, vertSize, vertices);
+	glBufferSubData(GL_ARRAY_BUFFER, vertSize, normSize, normals);
+	glBufferSubData(GL_ARRAY_BUFFER, vertSize+normSize, texSize, texCoords);
+	glBufferSubData(GL_ARRAY_BUFFER, vertSize+normSize+texSize, tanSize, tangents);
+	
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(0));
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(vertSize));
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2*sizeof(GLfloat), BUFFER_OFFSET(vertSize+normSize));
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(vertSize+normSize+texSize));
+	glEnableVertexAttribArray(3);
+	
+	glBindVertexArray(0);
+	return vao;
+}
 
 GLuint initBuffers(vec3 *vertices, int vertSize, vec3 *normals, int normSize, vec2 *texCoords, int texSize) {
 	GLuint vbo, vao;
@@ -525,12 +556,16 @@ GLuint initQuadCube(int divisions) {
 	createCube(divisions, &qc);
 	vec2 texCoords[qc.vertexNumber];
 	vec3 vna[qc.vertexNumber];
+	vec3 tangent[qc.vertexNumber];
+	*tangent = *generateTangents(qc.vertexNumber, qc.points, tangent);
+	
 	for(int i = 0; i < qc.vertexNumber; i++) {
     	texCoords[i].x = (atan2(qc.points[i].y, qc.points[i].x) / 3.1415926 + 1.0) * 0.5;
     	texCoords[i].y = asin(qc.points[i].z) / 3.1415926 + 0.5;
     }
     *vna = *generateSmoothNormals(vna, qc.points, qc.normals, qc.vertexNumber);
-    vao = initBuffers(qc.points, qc.size, vna, qc.nsize, texCoords, sizeof(texCoords[0])*qc.vertexNumber);
+    //vao = initBuffers(qc.points, qc.size, vna, qc.nsize, texCoords, sizeof(texCoords[0])*qc.vertexNumber);
+    vao = initBufferTangents(qc.points, qc.size, vna, qc.nsize, tangent, qc.nsize, texCoords, sizeof(texCoords[0])*qc.vertexNumber);
     
     return vao;
 }
@@ -932,6 +967,7 @@ int main(int argc, char *argv[])
 	GLuint skyShader = initSkyShader();
 	GLuint atmosphereShader = initAtmosphereShader();
 	GLuint ringShader = initLightingShader();
+	GLuint waterShader = initWaterShader();
 	GLuint depthShader = initDepthShader();
 	GLuint fboShader = initFramebufferShader();
 	GLuint noiseRenderShader = initNoiseShader();
@@ -1066,17 +1102,13 @@ int main(int argc, char *argv[])
 		draw(ringVAO, ringShader, planetRing.vertexNumber, ringTex, model, translation, lightPosition, lightSpaceMatrix);
 		model = multiplymat4(translatevec3(translation), scale(fScale));
 		drawTess(quadCubeVAO, tessShader, qc.vertexNumber, textureColorBuffer, model, translation, lightPosition);
-		//draw(quadCubeVAO, ringShader, qc.vertexNumber, earthTex, model, translation, lightPosition, lightSpaceMatrix);
+		model = multiplymat4(translatevec3(translation), scale(fScale*1.01));
+		draw(quadCubeVAO, waterShader, qc.vertexNumber, earthTex, model, translation, lightPosition, lightSpaceMatrix);
 		model = multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(lightPositionXYZ)), scale(15.0)),rotateX(90.0));
 		draw(quadCubeVAO, ringShader, qc.vertexNumber, sunNoiseTexture, model, lightPositionXYZ, lightPosition, lightSpaceMatrix);
 		
-		//model = multiplymat4(translate(25.0, 0.0, -90.0), scale(10.0));
-		//draw(quadVAO, ringShader, 6, depthMap, model, translation, lightPosition, lightSpaceMatrix);
-		
 		model = multiplymat4(translate(-75.0, 25.0, 0.0), scale(10.0));
 		draw(quadVAO, fboShader, 6, textureColorBuffer, model, translation, lightPosition, lightSpaceMatrix);
-		
-		//vec4 cc = getCameraPosition(translate(-10.0, 0.0, 0.0));
 		
 		//model = multiplymat4(multiplymat4(translate(cc.x, cc.y, cc.z), scale(1.0)), getViewRotation());
 		//model = multiplymat4(translate(-75.0, 25.0, 0.0), scale(2.0));
@@ -1089,7 +1121,7 @@ int main(int argc, char *argv[])
 		
 		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
 		//draw(quadCubeVAO, ringShader, qc.vertexNumber, earthTex, atmo, translation, lightPosition, lightSpaceMatrix);
-		//drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
+		drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
 
 		glfwPollEvents();
 		glfwSwapBuffers(window);
