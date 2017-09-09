@@ -1074,7 +1074,7 @@ int main(int argc, char *argv[])
 		//draw(quadVAO, ringShader, 6, depthMap, model, translation, lightPosition, lightSpaceMatrix);
 		
 		model = multiplymat4(translate(-75.0, 25.0, 0.0), scale(10.0));
-		draw(quadVAO, fboShader, 6, depthMap, model, translation, lightPosition, lightSpaceMatrix);
+		draw(quadVAO, fboShader, 6, textureColorBuffer, model, translation, lightPosition, lightSpaceMatrix);
 		
 		//vec4 cc = getCameraPosition(translate(-10.0, 0.0, 0.0));
 		

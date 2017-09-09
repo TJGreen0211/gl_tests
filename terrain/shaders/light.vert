@@ -8,7 +8,6 @@ uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 uniform mat4 lightSpace;
-uniform vec3 cameraPos;
 uniform vec3 lightPosition;
 
 out vec4 fLightSpace;
@@ -16,13 +15,11 @@ out vec3 fragPos;
 out vec3 fE;
 out vec3 fN;
 out vec3 fL;
-out vec3 fH;
 out vec2 fTexCoords;
 
 void main()
 {	
 	gl_Position = vPosition*model*view*projection;
-	vec4 ray = normalize(model*vPosition - vec4(cameraPos, 1.0));
 	
 	mat3 normalMatrix = transpose(inverse(mat3(model)));
 	vec4 lightPos = vec4(lightPosition, 1.0);
@@ -30,7 +27,6 @@ void main()
 	fE = -normalize(vPosition*model).xyz;
 	fN = normalize(vNormal*normalMatrix);
 	fL = -normalize(lightDir);
-	fH = -normalize((vPosition*model - lightPos) + ray).xyz;
 	
 	fLightSpace = vPosition*model*lightSpace;
 	fragPos = vec3(vPosition*model).xyz;

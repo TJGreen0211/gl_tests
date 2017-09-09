@@ -11,6 +11,7 @@ in vec4 fLightSpace;
 out vec4 FragColor;
 
 uniform vec3 lightPosition;
+uniform vec3 cameraPos;
 uniform sampler2D texture1;
 uniform sampler2D depthMap;
 
@@ -65,6 +66,9 @@ void main()
 	vec4 diffuseProduct = vec4(1.0, 1.0, 1.0, 1.0)*vec4(0.8, 0.8, 0.8, 1.0);
 	vec4 specularProduct = vec4(1.0, 1.0, 1.0, 1.0)*vec4(0.5, 0.5, 0.5, 1.0);
 	float shininess = 25.0;
+	
+	vec3 ray = normalize(fragPos - cameraPos);
+	vec3 fH = -normalize((fragPos - lightPosition) + ray).xyz;
 	
 	float Kd = max(dot(fL, fN), 0.0);
 	float Ks = pow(max(dot(fN, fH), 0.0), shininess);
