@@ -50,13 +50,11 @@ void main()
 	v.z = dot(lightDir, N);
 	vec3 fL = -normalize(v);
 	
-	vec3 vertexPosition = vec3(vec4(tePosition,1.0)*model).xyz;
+	/*vec3 vertexPosition = vec3(vec4(tePosition,1.0)*model).xyz;
 	v.x = dot(vertexPosition, T);
 	v.y = dot(vertexPosition, B);
 	v.z = dot(vertexPosition, N);
-	vec3 fE = -normalize(v);
-	
-	vec3 fN = normalize(teNormal*normalMatrix);
+	vec3 fE = -normalize(v);*/
 	
 	vec3 halfVector = vec3((vec4(tePosition, 1.0)*model - lightPos) + ray).xyz;
 	v.x = dot(halfVector, T);
