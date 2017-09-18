@@ -84,5 +84,5 @@ void main()
 	//color = amplify(d1, 40, -0.5) * amplify(d2, 60, -0.5) * color;
 
     FragColor = vec4(vec3(ambient + diffuse + specular), 1.0);
-    //FragColor = vec4(teNormal, 1.0);
+    //FragColor = vec4(teN, 1.0);
 }
