@@ -328,13 +328,13 @@ int main(int argc, char *argv[])
 		model = multiplymat4(translate(1.0, 1.0, 0.0), scale(5.0));
 		//draw(objectVAO, lightShader, object.vertexNumber, cubeTex, model);
 		
-		glUseProgram(lightShader);
-		initMVP(lightShader, model, getViewMatrix());
+		glUseProgram(instanceShader);
+		initMVP(instanceShader, model, getViewMatrix());
 		vec4 cameraPos = getCameraPosition(model);
 	
 		glBindVertexArray(objectVAO);
 		
-		glUniform3f(glGetUniformLocation(lightShader, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+		glUniform3f(glGetUniformLocation(instanceShader, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 		//glDrawElementsInstanced(GL_TRIANGLES, object.vertexNumber, GL_UNSIGNED_INT, 0, 10);
 		glDrawArraysInstanced(GL_TRIANGLES, 0, object.vertexNumber, 10);
 		//glDrawArrays(GL_TRIANGLES, 0, object.vertexNumber);

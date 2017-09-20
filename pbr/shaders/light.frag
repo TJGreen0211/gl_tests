@@ -5,7 +5,6 @@ in vec2 fTexCoords;
 in vec3 fN;
 in vec3 fL;
 in vec3 fH;
-in vec4 fLightSpace;
 
 out vec4 FragColor;
 

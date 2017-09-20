@@ -478,7 +478,7 @@ mat4 cubeModelspace(float theta, float offsetX, float offsetZ) {
 
 void draw(GLuint VAO, GLuint shader, GLuint vertices, GLuint texture, mat4 m, mat4 *l, vec4 lightPosition) {
 	glUseProgram(shader);
-	vec3 look = {0.0, 0.0, -1.0};
+	//vec3 look = {0.0, 0.0, -1.0};
 	//vec4 light = {0.0, 30.0, 0.0, 1.0};
 	//initMVP(shader, m, getLookAtMatrix(lightPosition, look));
 	
@@ -566,7 +566,7 @@ int main(int argc, char *argv[])
 	//rotate {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, -1.0}
 	vec3 lookAt[6] = {{1.0, 0.0, 0.0}, {-1.0, 0.0, 0.0},{0.0, 1.0, 0.0},
 					{0.0, -1.0, 0.0},{0.0, 0.0, 1.0},{0.0, 0.0, -1.0}};
-	vec4 lightPosition = {0.0, 0.0, 0.0, 1.0};
+	vec4 lightPosition = {10.0, 10.0, 0.0, 1.0};
 	
 	mat4 shadowProjection = perspective(90.0, 1024.0/1024.0, zNear, zFar);
 	
@@ -653,9 +653,9 @@ int main(int argc, char *argv[])
 		drawSkybox(depthCubemap, skyboxVAO);
 		model = multiplymat4(scale(55.0), rotateY(0.0));
 		draw(floorVAO, shadowShader, 6, cubeTex, model, lightSpaceMatrix, lightPosition);
-		model = multiplymat4(scale(55.0), rotateY(-90.0));
+		model = multiplymat4(scale(30.0), rotateY(-90.0));
 		draw(floorVAO, shadowShader, 6, floorTex, model, lightSpaceMatrix, lightPosition);
-		model = multiplymat4(scale(55.0), rotateX(90.0));
+		model = multiplymat4(translate(-20.0, 0.0, 0.0),multiplymat4(scale(55.0), rotateX(90.0)));
 		draw(floorVAO, shadowShader, 6, floorTex, model, lightSpaceMatrix, lightPosition);
 		model = multiplymat4(scale(55.0), rotateY(180.0));
 		draw(floorVAO, shadowShader, 6, floorTex, model, lightSpaceMatrix, lightPosition);

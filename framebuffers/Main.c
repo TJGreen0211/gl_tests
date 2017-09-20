@@ -396,11 +396,11 @@ int main(int argc, char *argv[])
 		glViewport(0, 0, getWindowWidth(), getWindowHeight());
 		
 		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		model = floorModelspace(theta);
-		draw(floorVAO, shadowShader, 6, floorTex, model);
-		model = cubeModelspace(theta);
-		draw(cubeVAO, shadowShader, 36, cubeTex, model);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			model = floorModelspace(theta);
+			draw(floorVAO, shadowShader, 6, floorTex, model);
+			model = cubeModelspace(theta);
+			draw(cubeVAO, shadowShader, 36, cubeTex, model);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		
 		glClear(GL_COLOR_BUFFER_BIT);

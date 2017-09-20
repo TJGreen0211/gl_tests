@@ -39,6 +39,89 @@ mat2 ZERO_MATRIX_2 = {{
 	{0.0, 0.0}
 }};
 
+float quatLength(quaternion q) {
+	return sqrt(q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w);
+}
+
+quaternion quatNormalize(quaternion q) {
+	float len = quatLength(q);
+	q.x /= len;
+	q.y /= len;
+	q.z /= len;
+	q.w /= len;
+	
+	return q;
+}
+
+quaternion quatConjugate(quaternion q) {
+	q.w = q.w;
+	q.x = -q.x;
+	q.y = -q.y;
+	q.z = -q.z;
+	return q;
+}
+
+quaternion quatMultiply(quaternion q, quaternion u) {
+	quaternion c;
+	c.w = q.w*u.w - q.x*u.x - q.y*u.y - q.z*u.z;
+	c.x = q.w*u.x + q.x*u.w + q.y*u.z - q.z*u.y;
+	c.y = q.w*u.y - q.x*u.z + q.y*u.w + q.z*u.x;
+	c.z = q.w*u.z + q.x*u.y - q.y*u.x + q.z*u.w;
+	return c;
+}
+/*
+tmat3x3<T, P> Result(T(1));
+		T qxx(q.x * q.x);
+		T qyy(q.y * q.y);
+		T qzz(q.z * q.z);
+		T qxz(q.x * q.z);
+		T qxy(q.x * q.y);
+		T qyz(q.y * q.z);
+		T qwx(q.w * q.x);
+		T qwy(q.w * q.y);
+		T qwz(q.w * q.z);
+
+		Result[0][0] = T(1) - T(2) * (qyy +  qzz);
+		Result[0][1] = T(2) * (qxy + qwz);
+		Result[0][2] = T(2) * (qxz - qwy);
+
+		Result[1][0] = T(2) * (qxy - qwz);
+		Result[1][1] = T(1) - T(2) * (qxx +  qzz);
+		Result[1][2] = T(2) * (qyz + qwx);
+
+		Result[2][0] = T(2) * (qxz + qwy);
+		Result[2][1] = T(2) * (qyz - qwx);
+		Result[2][2] = T(1) - T(2) * (qxx +  qyy);
+		return Result;*/
+
+mat4 quaternionToRotation(quaternion q) {
+	mat4 rotation = {
+		{
+		{1.0-2.0*(q.y*q.y + q.z*q.z), 	  2.0*(q.x*q.y + q.z*q.w), 	   2.0*(q.x*q.z - q.y*q.w), 0.0},
+		{	 2.0*(q.x*q.y - q.z*q.w), 1.0-2.0*(q.x*q.x + q.z*q.z), 	   2.0*(q.y*q.z + q.x*q.w), 0.0},
+		{    2.0*(q.x*q.z + q.y*q.w),     2.0*(q.y*q.z - q.x*q.w), 1.0-2.0*(q.x*q.x + q.y*q.y), 0.0},
+		{	 0.0, 						  0.0, 					   0.0, 						1.0}
+		}
+	};
+	return rotation;
+}
+
+quaternion angleAxis(float angle, vec3 axis, vec3 point) {
+	quaternion r, p;
+	r.w = cos(angle/2.0);
+	r.x = axis.x * sin(angle/2.0);
+	r.y = axis.y * sin(angle/2.0);
+	r.z = axis.z * sin(angle/2.0);
+	
+	p.w = 0.0;
+	p.x = point.x;
+	p.y = point.y;
+	p.z = point.z;
+	
+	return quatMultiply(quatMultiply(r, p), quatConjugate(r));
+}
+
+
 vec4 addvec4(vec4 v, vec4 u)
 {
 	vec4 temp = {v.x + u.x, v.y + u.y, v.z + u.z, v.w + u.w,};

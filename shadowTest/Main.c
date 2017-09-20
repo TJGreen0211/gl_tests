@@ -514,7 +514,10 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
 	int state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
 	if (state == GLFW_PRESS)
 	{
-		processMouseMovement(xpos, ypos);
+		processMouseMovement(xpos, ypos, 0);
+	}
+	else {
+		processMouseMovement(xpos, ypos, 1);
 	}
 	mousePosX = xpos;
 	mousePosY = ypos;
