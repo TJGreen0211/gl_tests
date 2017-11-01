@@ -720,9 +720,9 @@ void drawInstanced(GLuint vao, GLuint vbo, GLuint shader, int vertexNumber, int 
 	vec3 translation[drawAmount];
 	for(int i = 0; i < drawAmount; i++){
 		
-		translation[i].x = (positions[i].x*2.3);// * cos(theta/75.0);
+		translation[i].x = cos(scaleArray[i]+theta/85.0)*140.0+positions[i].x;
 		translation[i].y = positions[i].y;
-		translation[i].z = (positions[i].z*2.3);// * sin(theta/75.0);
+		translation[i].z = sin(scaleArray[i]+theta/85.0)*140.0+positions[i].z;
 	}
 	
 	/*vec3 translation;
@@ -735,7 +735,8 @@ void drawInstanced(GLuint vao, GLuint vbo, GLuint shader, int vertexNumber, int 
 	for(int i = 0; i < vertexNumber; i++) {
 		//modelArr[i] = multiplymat4(multiplymat4(translatevec3(translation), rotations[i]), scale(scaleArray[i]/10.0));
 		//modelArr[i] = translate(pos[i].x+65.0/2.0, pos[i].y, pos[i].z);
-		modelArr[i] = multiplymat4(multiplymat4(multiplymat4(translatevec3(center), translatevec3(translation[i])), rotations[i]), scale(scaleArray[i]/5.0));
+		modelArr[i] = multiplymat4(multiplymat4(multiplymat4(multiplymat4(translatevec3(center), rotateX(-10.0)), translatevec3(translation[i])), rotations[i]), scale(scaleArray[i]/700.0));
+		//modelArr[i] = translatevec3(translation[i]);
 		//modelArr[i] = multiplymat4(multiplymat4(translate(positions[i].x+65.0/2.0, positions[i].y, positions[i].z), rotations[i]), scale(scaleArray[i]/10.0));
 	}
 	//multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(translation)), scale(15.0)),rotateX(90.0));
@@ -928,16 +929,14 @@ float getDeltaTime(float lastFrame) {
 }
 
 vec3 *getRandomPositions(vec3 *positions, int numDraws) {
-	float degToRad = M_PI / 180.0;
-	float innerRad = 65.0;
-	float width = 15.0;
+	float innerRad = 1.0;
+	float width = 30.0;
 	float height = 1.0;
 	
 	for(int i = 0; i < numDraws; i++){
-		float deg = i * degToRad;
-		positions[i].x = cos(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));//sin(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
+		positions[i].x = -(((float)rand()/(float)(RAND_MAX)) * width);
 		positions[i].y = -((float)rand()/(float)(RAND_MAX)) * height;
-		positions[i].z = sin(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
+		positions[i].z = -(((float)rand()/(float)(RAND_MAX)) * width);
 	}
 	
 	return positions;
@@ -989,7 +988,7 @@ int main(int argc, char *argv[])
 	GLuint rock2VAO = initRockBuffer("shaders/rock2.obj");
 	GLuint rock3VAO = initRockBuffer("shaders/rock3.obj");
 	
-	GLuint quadCubeVAO = initQuadCube(25);
+	GLuint quadCubeVAO = initQuadCube(30);
 	
 	GLuint depthbuffer = initDepthbuffer();
 	GLuint framebuffer = initFramebuffer(&textureColorBuffer);
@@ -1020,7 +1019,7 @@ int main(int argc, char *argv[])
 	
 	float scaleArray[instancedDraws];
 	for(int i = 0; i < instancedDraws; i++){
-		scaleArray[i] = (-(((float)rand()/(float)(RAND_MAX))));
+		scaleArray[i] = -((float)rand()/(float)(RAND_MAX)) * 360.0;
 	}
 	
 	GLuint positionsVBO;
@@ -1110,7 +1109,7 @@ int main(int argc, char *argv[])
 		model = multiplymat4(translatevec3(translation), scale(fScale));
 		drawTess(quadCubeVAO, tessShader, qc.vertexNumber, textureColorBuffer, model, translation, lightPosition);
 		model = multiplymat4(translatevec3(translation), scale(fScale*1.01));
-		draw(quadCubeVAO, waterShader, qc.vertexNumber, planetTex, planetNorm, model, translation, lightPosition, lightSpaceMatrix);
+		//draw(quadCubeVAO, waterShader, qc.vertexNumber, planetTex, planetNorm, model, translation, lightPosition, lightSpaceMatrix);
 		
 		model = multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(lightPositionXYZ)), scale(15.0)),rotateX(90.0));
 		draw(quadCubeVAO, ringShader, qc.vertexNumber, sunNoiseTexture, planetNorm, model, lightPositionXYZ, lightPosition, lightSpaceMatrix);
