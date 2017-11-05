@@ -12,6 +12,7 @@ GLfloat Zoom = 45.0f;
 float lastx, lasty;
 
 mat4 tr, ry, rx, rxry;
+vec3 rotation = {0.0, 0.0, 0.0};
 vec3 Position = {0.0, 1.0, 0.0};
 vec3 Up = {0.0, 0.0, 1.0};
 vec3 Front = {0.0, 0.0, -1.0};
@@ -19,9 +20,21 @@ vec3 Right = {1.0, 0.0, 0.0};
 
 mat4 getViewMatrix()
 {	
-	rxry = multiplymat4(rx, ry);
-	tr = translate(Position.x, Position.y, Position.z);	
+	float rad = 180.0 / M_PI;
+	float arcYaw, arcPitch;
+	
+	tr = translate(rotation.x+Position.x, rotation.y+Position.y, rotation.z+Position.z);
+	vec3 d = {rotation.x - 0.0, rotation.y - 0.0, rotation.z - 0.0};
+	d = normalizevec3(d);
+	arcYaw = asin(-d.y) * rad;
+	arcPitch = atan2(d.x, -d.z) * rad;
+	rxry = multiplymat4(rotateX(arcYaw), rotateY(arcPitch));
+
 	return multiplymat4(rxry, tr);
+}
+
+vec3 getCamera() {
+	return Position;
 }
 
 mat4 getViewPosition()
@@ -71,6 +84,15 @@ void processKeyboard(enum Camera_Movement direction, GLfloat deltaTime, GLfloat 
 int constrainPitch;
 void processMouseMovement(GLfloat xpos, GLfloat ypos, int resetFlag)
 {
+	vec3 mouseArc = {xpos, ypos, 0.0};
+	mouseArc.y = -mouseArc.y;
+	float mouseArc2 = mouseArc.x * mouseArc.x + mouseArc.y * mouseArc.y;
+	
+	if(mouseArc2 <= 1*1)
+		mouseArc.z = sqrt(1*1 - mouseArc2);
+	else
+		mouseArc = normalizevec3(mouseArc);
+	
 	if(resetFlag) {
 		lastx = xpos;
 		lasty = ypos;
@@ -98,10 +120,22 @@ void processMouseMovement(GLfloat xpos, GLfloat ypos, int resetFlag)
 		quaternion one = angleAxis(Pitch*toRadians, xAxis, zAxis);
 		quaternion two = angleAxis(-Yaw*toRadians, yAxis, zAxis);
 		//printf("quaternion: %f, %f, %f, %f\n", one.w, one.x, one.y, one.z);
+		/*one.x = one.x*(Position.x - (Position.x+10.0))+10.0; 
+		one.y = one.y*(Position.y - (Position.y+10.0))+10.0; 
+		one.z = one.z*(Position.z - (Position.z+10.0))+10.0;
+		
+		two.x = one.x*(Position.x - (Position.x+10.0))+10.0; 
+		two.y = one.y*(Position.y - (Position.y+10.0))+10.0; 
+		two.z = one.z*(Position.z - (Position.z+10.0))+10.0;*/
+		//two.x = -two.x; two.y = -two.y; two.z = -two.z; two.w = -two.w;
 	
 		rx = quaternionToRotation(one);
 		ry = quaternionToRotation(two);
-	
+		
+		rotation.x = 10.0 * cos(Yaw/50.0) * sin(-Pitch/50.0);
+		rotation.y = 10.0 * cos(-Pitch/50.0);
+		rotation.z = 10.0 * sin(Yaw/50.0) * sin(-Pitch/50.0);
+		
 		updateCameraVectors();
 	}
 }

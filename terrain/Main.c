@@ -8,7 +8,7 @@ float zNear = 0.5, zFar = 100000.0;
 int mousePosX, mousePosY, actionPress, keys;
 GLuint depthMap, textureColorBuffer, textureColorBuffer3D, sunNoiseTexture;
 struct sphere planet;
-struct obj object;
+struct obj object, ship;
 struct ring planetRing;
 struct quadCube qc, qc2;
 mat4 lightView;
@@ -570,18 +570,18 @@ GLuint initQuadCube(int divisions) {
     return vao;
 }
 
-GLuint initObjectBuffer() {
+GLuint initObjectBuffer(char *path) {
 	GLuint vao;
-	object = ObjLoadModel("/Users/tjgreen/Documents/OpenGL/gl_tests/terrain/assets/chimera.obj");
-	vec3 vna[object.vertexNumber];
-	vec2 texCoords[object.vertexNumber];
-	*vna = *generateSmoothNormals(vna, object.points, object.normals, object.vertexNumber);
+	ship = ObjLoadModel(path);
+	vec3 vna[ship.vertexNumber];
+	vec2 texCoords[ship.vertexNumber];
+	*vna = *generateSmoothNormals(vna, ship.points, ship.normals, ship.vertexNumber);
 	
-	for(int i = 0; i < object.vertexNumber; i++) {
+	for(int i = 0; i < ship.vertexNumber; i++) {
     	texCoords[i].x = 1.0;
     	texCoords[i].y = 0.0;
     }
-    vao = initBuffers(object.points, object.size, object.normals, object.nsize, texCoords, sizeof(texCoords[0])*object.vertexNumber);
+    vao = initBuffers(ship.points, ship.size, ship.normals, ship.nsize, texCoords, sizeof(texCoords[0])*ship.vertexNumber);
 	
 	return vao;
 }
@@ -929,7 +929,6 @@ float getDeltaTime(float lastFrame) {
 }
 
 vec3 *getRandomPositions(vec3 *positions, int numDraws) {
-	float innerRad = 1.0;
 	float width = 30.0;
 	float height = 1.0;
 	
@@ -970,7 +969,7 @@ int main(int argc, char *argv[])
 	GLuint skyShader = initSkyShader();
 	GLuint atmosphereShader = initAtmosphereShader();
 	GLuint ringShader = initLightingShader();
-	GLuint waterShader = initWaterShader();
+	//GLuint waterShader = initWaterShader();
 	GLuint depthShader = initDepthShader();
 	GLuint fboShader = initFramebufferShader();
 	GLuint noiseRenderShader = initNoiseShader();
@@ -983,7 +982,7 @@ int main(int argc, char *argv[])
 	GLuint planetNorm = loadTexture("shaders/marsNormal.png", 0);
 	GLuint sphereVAO = initSphere();
 	GLuint ringVAO = initRing();
-	//GLuint objectVAO = initObjectBuffer();
+	GLuint objectVAO = initObjectBuffer("assets/rifter.obj");
 	GLuint rockVAO = initRockBuffer("shaders/rock.obj");
 	GLuint rock2VAO = initRockBuffer("shaders/rock2.obj");
 	GLuint rock3VAO = initRockBuffer("shaders/rock3.obj");
@@ -1027,8 +1026,6 @@ int main(int argc, char *argv[])
 	
 	mat4 model, atmo;
 	glViewport(0, 0, getWindowWidth(), getWindowHeight());
-	
-	
 	
 	float deltaTime = 0.0;
 	float lastFrame = 0.0;
@@ -1109,7 +1106,7 @@ int main(int argc, char *argv[])
 		model = multiplymat4(translatevec3(translation), scale(fScale));
 		drawTess(quadCubeVAO, tessShader, qc.vertexNumber, textureColorBuffer, model, translation, lightPosition);
 		model = multiplymat4(translatevec3(translation), scale(fScale*1.01));
-		//draw(quadCubeVAO, waterShader, qc.vertexNumber, planetTex, planetNorm, model, translation, lightPosition, lightSpaceMatrix);
+		draw(quadCubeVAO, ringShader, qc.vertexNumber, planetTex, planetNorm, model, translation, lightPosition, lightSpaceMatrix);
 		
 		model = multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(lightPositionXYZ)), scale(15.0)),rotateX(90.0));
 		draw(quadCubeVAO, ringShader, qc.vertexNumber, sunNoiseTexture, planetNorm, model, lightPositionXYZ, lightPosition, lightSpaceMatrix);
@@ -1118,8 +1115,19 @@ int main(int argc, char *argv[])
 		draw(quadVAO, fboShader, 6, textureColorBuffer, planetNorm, model, translation, lightPosition, lightSpaceMatrix);
 		
 		//model = multiplymat4(multiplymat4(translate(cc.x, cc.y, cc.z), scale(1.0)), getViewRotation());
-		//model = multiplymat4(translate(-75.0, 25.0, 0.0), scale(2.0));
-		//draw(objectVAO, ringShader, object.vertexNumber, earthTex, model, translation, lightPosition);
+		vec3 arcBallPos = getCamera();
+		/*for(int i = 0; i < 4; i++) {
+			for (int j = 0; j < 4; j++) {
+				printf("%f", posMat.m[i][j]);
+			}
+			printf("\n");
+		}*/
+		float modelRotationAngle = 0.0;
+		if (keys == GLFW_KEY_W) {
+			modelRotationAngle = 90.0;
+		}
+		model = multiplymat4(multiplymat4(translate(-arcBallPos.x, -arcBallPos.y, -arcBallPos.z), rotateX(modelRotationAngle)), scale(1.0));
+		draw(objectVAO, ringShader, ship.vertexNumber, earthTex, planetNorm, model, lightPositionXYZ, lightPosition, lightSpaceMatrix);
 		
 		glUseProgram(instanceShader);
 		drawInstanced(rockVAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos1, rotations, model, scaleArray, theta, lightPosition);
@@ -1128,7 +1136,7 @@ int main(int argc, char *argv[])
 		
 		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
 		//draw(quadCubeVAO, ringShader, qc.vertexNumber, earthTex, atmo, translation, lightPosition, lightSpaceMatrix);
-		//drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
+		drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
 
 		glfwPollEvents();
 		glfwSwapBuffers(window);
@@ -1165,6 +1173,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
 	int state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
+	//xpos = 1.0*xpos/getWindowWidth()*2 - 1.0;
+	//ypos =  1.0*ypos/getWindowHeight()*2 - 1.0;
 	if (state == GLFW_PRESS)
 	{
 		processMouseMovement(xpos, ypos, 0);
