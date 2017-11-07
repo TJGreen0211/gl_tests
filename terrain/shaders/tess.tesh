@@ -4,15 +4,19 @@ layout(triangles, equal_spacing, ccw) in;
 in vec3 tcPosition[];
 in vec3 tcNormal[];
 in vec3 tcTangent[];
+out vec2 longlat;
 out vec3 tePosition;
 out vec3 tePatchDistance;
 out vec3 teNormal;
 out vec3 teTangent;
 out vec3 teN;
+out vec3 teShadow;
+out vec4 teLightSpace;
 
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+uniform mat4 lightSpace;
 
 uniform sampler2D noiseTexture;
 
@@ -45,13 +49,15 @@ void main()
 	vec3 n = normalize(tcNormal[0] + tcNormal[1] + tcNormal[2]);
 	
 	tePosition = p0 + p1 + p2;
-	vec2 longlat = vec2((atan(tePosition.x, tePosition.y) / 3.1415926 + 1.0) * 0.5,
+	longlat = vec2((atan(tePosition.x, tePosition.y) / 3.1415926 + 1.0) * 0.5,
                         (asin(tePosition.z) / 3.1415926 + 0.5));
 	vec3 noiseOffset = vec3(texture(noiseTexture, longlat))/20.0;
 	tePatchDistance = gl_TessCoord;
 	tePosition = vec3(tePosition.x+noiseOffset.x, tePosition.y+noiseOffset.y, tePosition.z+noiseOffset.z);
 	
 	gl_Position = vec4(tePosition, 1.0)*model*view*projection;
+	teLightSpace = vec4(tePosition, 1.0)*model*lightSpace;
+	teShadow = vec3(vec4(tePosition, 1.0)*model).xyz;
 	teNormal = n;//cross(getNormal(longlat), tePosition);
 	teN = getNormal(longlat);
 	teTangent = normalize(tcTangent[0] + tcTangent[1] + tcTangent[2]);

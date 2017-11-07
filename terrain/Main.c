@@ -3,9 +3,11 @@
 #include <unistd.h>
 #include <time.h>
 #include <math.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 float zNear = 0.5, zFar = 100000.0;
-int mousePosX, mousePosY, actionPress, keys;
+int mousePosX, mousePosY, actionPress, keys, mouseZoomOffset;
 GLuint depthMap, textureColorBuffer, textureColorBuffer3D, sunNoiseTexture;
 struct sphere planet;
 struct obj object, ship;
@@ -767,7 +769,7 @@ void drawInstanced(GLuint vao, GLuint vbo, GLuint shader, int vertexNumber, int 
 	glBindVertexArray(0);
 }
 
-void drawTess(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, vec3 position, vec4 lightPosition) {
+void drawTess(GLuint vao, GLuint shader, int vertices, GLuint texture, GLuint texture2, mat4 m, vec3 position, vec4 lightPosition, mat4 lightSpaceMatrix) {
 	glUseProgram(shader);
 	initMVP(shader, m, getViewMatrix());
 	glBindVertexArray(vao);
@@ -777,12 +779,16 @@ void drawTess(GLuint vao, GLuint shader, int vertices, GLuint texture, mat4 m, v
 	glUniform3f(glGetUniformLocation(shader, "camPosition"), camPosition.x, camPosition.y, camPosition.z);
 	glUniform3f(glGetUniformLocation(shader, "translation"), position.x, position.y, position.z);
 	glUniform3f(glGetUniformLocation(shader, "lightPosition"), lightPosition.x, lightPosition.y, lightPosition.z);
+	glUniformMatrix4fv(glGetUniformLocation(shader, "lightSpace"), 1, GL_FALSE, &lightSpaceMatrix.m[0][0]);
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
+	glBindTexture(GL_TEXTURE_2D, texture2);
 	glUniform1i(glGetUniformLocation(shader, "texture1"), 0);
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glUniform1i(glGetUniformLocation(shader, "noiseTexture"), 1);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, depthMap);
+	glUniform1i(glGetUniformLocation(shader, "depthMap"), 2);
 	glPatchParameteri(GL_PATCH_VERTICES, vertices);
 	glDrawArrays(GL_PATCHES, 0, vertices);
 	glBindVertexArray(0);
@@ -959,6 +965,26 @@ mat4 *getRandomRotations(mat4 *rotations, int numDraws) {
 	return rotations;
 }
 
+time_t getFileLastChangeTime(const char *path) {
+	struct stat file_stat;
+	int err = stat(path, &file_stat);
+	if(err != 0) {
+		perror(" [file_is_modified] stat");
+        exit(0);
+	}
+	return file_stat.st_mtime;
+}
+
+int checkFileChange(const char *path, time_t oldMTime) {
+	struct stat file_stat;
+	int err = stat(path, &file_stat);
+	if(err != 0) {
+		perror(" [file_is_modified] stat");
+        exit(0);
+	}
+	return file_stat.st_mtime > oldMTime;
+}
+
 int main(int argc, char *argv[]) 
 {
 	float theta = 0.0;
@@ -977,8 +1003,8 @@ int main(int argc, char *argv[])
 	
 	GLuint earthTex = loadTexture("shaders/earth.jpg", 0);
 	GLuint moonTex = loadTexture("shaders/moon.jpg", 0);
+	GLuint planetTex = loadTexture("assets/europa.jpg", 0);
 	GLuint ringTex = loadTexture("shaders/ring.png", 1);
-	GLuint planetTex = loadTexture("shaders/mars.jpg", 0);
 	GLuint planetNorm = loadTexture("shaders/marsNormal.png", 0);
 	GLuint sphereVAO = initSphere();
 	GLuint ringVAO = initRing();
@@ -1033,8 +1059,16 @@ int main(int argc, char *argv[])
 	vec3 translation = {65.0, 0.0, 0.0};
 	mat4 lightProjection = ortho(-400.0, 400.0, -400.0, 400.0, zNear, zFar);
 	//mat4 lightProjection = perspective(90.0, getWindowWidth()/getWindowHeight(), zNear, zFar);
+	time_t changeDate = getFileLastChangeTime("shaders/tess.vert");
 	while(!glfwWindowShouldClose(window))
 	{	
+		if(checkFileChange("shaders/tess.frag", changeDate)) {
+			printf("FILE CHANGED");
+			tessShader = initTessShader();
+		}
+		changeDate = getFileLastChangeTime("shaders/tess.frag");
+		//printf("%ld\n", (long)changeDate);
+		
 		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			drawNoise(sNoiseVAO, noiseRenderShader, 6, permTexture, simplexTexture, gradTexture, 0);
@@ -1104,9 +1138,9 @@ int main(int argc, char *argv[])
 		model = multiplymat4(multiplymat4(translatevec3(translation), rotateX(80.0)), scale(fScale*1.5));
 		draw(ringVAO, ringShader, planetRing.vertexNumber, ringTex, planetNorm, model, translation, lightPosition, lightSpaceMatrix);
 		model = multiplymat4(translatevec3(translation), scale(fScale));
-		drawTess(quadCubeVAO, tessShader, qc.vertexNumber, textureColorBuffer, model, translation, lightPosition);
+		drawTess(quadCubeVAO, tessShader, qc.vertexNumber, textureColorBuffer, planetTex, model, translation, lightPosition, lightSpaceMatrix);
 		model = multiplymat4(translatevec3(translation), scale(fScale*1.01));
-		draw(quadCubeVAO, ringShader, qc.vertexNumber, planetTex, planetNorm, model, translation, lightPosition, lightSpaceMatrix);
+		//draw(quadCubeVAO, ringShader, qc.vertexNumber, planetTex, planetNorm, model, translation, lightPosition, lightSpaceMatrix);
 		
 		model = multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(lightPositionXYZ)), scale(15.0)),rotateX(90.0));
 		draw(quadCubeVAO, ringShader, qc.vertexNumber, sunNoiseTexture, planetNorm, model, lightPositionXYZ, lightPosition, lightSpaceMatrix);
@@ -1114,18 +1148,9 @@ int main(int argc, char *argv[])
 		model = multiplymat4(translate(-75.0, 25.0, 0.0), scale(10.0));
 		draw(quadVAO, fboShader, 6, textureColorBuffer, planetNorm, model, translation, lightPosition, lightSpaceMatrix);
 		
-		//model = multiplymat4(multiplymat4(translate(cc.x, cc.y, cc.z), scale(1.0)), getViewRotation());
 		vec3 arcBallPos = getCamera();
-		/*for(int i = 0; i < 4; i++) {
-			for (int j = 0; j < 4; j++) {
-				printf("%f", posMat.m[i][j]);
-			}
-			printf("\n");
-		}*/
 		float modelRotationAngle = 0.0;
-		if (keys == GLFW_KEY_W) {
-			modelRotationAngle = 90.0;
-		}
+
 		model = multiplymat4(multiplymat4(translate(-arcBallPos.x, -arcBallPos.y, -arcBallPos.z), rotateX(modelRotationAngle)), scale(1.0));
 		draw(objectVAO, ringShader, ship.vertexNumber, earthTex, planetNorm, model, lightPositionXYZ, lightPosition, lightSpaceMatrix);
 		
@@ -1136,7 +1161,7 @@ int main(int argc, char *argv[])
 		
 		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
 		//draw(quadCubeVAO, ringShader, qc.vertexNumber, earthTex, atmo, translation, lightPosition, lightSpaceMatrix);
-		drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
+		//drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
 
 		glfwPollEvents();
 		glfwSwapBuffers(window);
@@ -1184,4 +1209,8 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
 	}
 	mousePosX = xpos;
 	mousePosY = ypos;
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+	mouseZoomOffset = processMouseScroll(yoffset, mouseZoomOffset);
 }

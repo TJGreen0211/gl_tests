@@ -11,7 +11,7 @@
 
 #include "LoadShader.h"
 #include "LinearAlg.h"
-#include "Camera.h"
+#include "arcballCamera.h"
 #include "Window.h"
 #include "SOIL/SOIL.h"
 #include "Sphere.h"

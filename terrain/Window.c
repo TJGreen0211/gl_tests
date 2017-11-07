@@ -20,7 +20,7 @@ GLFWwindow *setupGLFW() {
 	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_ENABLED);
 	glfwSetKeyCallback(window, key_callback);
 	glfwSetCursorPosCallback(window, mouse_callback);
-	//glfwSetScrollCallback(window, scroll_callback);
+	glfwSetScrollCallback(window, scroll_callback);
 	//glfwSetMouseButtonCallback(window, mouse_button_callback);
 	return window;
 }

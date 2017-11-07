@@ -8,10 +8,13 @@ in vec3 gTriDistance;
 in vec2 fTexCoords;
 */
 
+in vec2 longlat;
 in vec3 teNormal;
 in vec3 tePosition;
 in vec3 teTangent;
 in vec3 teN;
+in vec3 teShadow;
+in vec4 teLightSpace;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -19,6 +22,31 @@ uniform vec3 lightPosition;
 uniform vec3 camPosition;
 
 uniform sampler2D texture1;
+uniform sampler2D depthMap;
+
+float shadowCalculation(vec4 fLight) {
+	vec3 fragToLight = teShadow - lightPosition;
+	float closestDepth = texture(depthMap, vec2(fLight.xyz * 0.5 + 0.5)).r;
+	float currentDepth = length(fragToLight)/700.0;
+	//closestDepth *= 700.0;
+	
+	float shadow = 0.0;
+	vec2 texelSize = 1.0 / textureSize(depthMap, 0);
+	for(int x = -1; x <= 1; ++x) {
+		for(int y = -1; y <= 1; ++y) {
+			float pcfDepth = texture(depthMap, vec2(fLight.xyz * 0.5 + 0.5) + vec2(x, y) * texelSize).r;
+			shadow += currentDepth - 0.02 > pcfDepth ? 1.0 : 0.0;
+		}
+	}
+	shadow /= 9.0;
+	
+	
+	//shadow = currentDepth - 0.02 > closestDepth ? 1.0 : 0.0;
+	//if(fragToLight.z > 1.0)
+	//	shadow = 0.0;
+	
+	return shadow;
+}
 
 float amplify(float d, float scale, float offset)
 {
@@ -33,6 +61,7 @@ void main()
 {
 	
 	vec4 ray = normalize(model*vec4(tePosition,1.0) - vec4(camPosition, 1.0));
+	vec4 color = vec4(texture(texture1, longlat)).rgba;
 	
 	mat3 normalMatrix = transpose(inverse(mat3(model)));
 	
@@ -69,8 +98,8 @@ void main()
 	
 	float Kd = max(dot(fL, teN), 0.0);
 	float Ks = pow(max(dot(teN, fH), 0.0), shininess);
-	vec3 ambient = ambientProduct.xyz;
-	vec3 diffuse = Kd * diffuseProduct.xyz;
+	vec3 ambient = ambientProduct.xyz *color.rgb;
+	vec3 diffuse = Kd * diffuseProduct.xyz * color.rgb;
 	vec3 specular = Ks * specularProduct.xyz;
 	
 	if(dot(fL, teN) < 0.0) {
@@ -82,7 +111,10 @@ void main()
 	//float d1 = min(min(gTriDistance.x, gTriDistance.y), gTriDistance.z);
     //float d2 = min(min(gPatchDistance.x, gPatchDistance.y), gPatchDistance.z);
 	//color = amplify(d1, 40, -0.5) * amplify(d2, 60, -0.5) * color;
+	float shadow = shadowCalculation(teLightSpace);
 
-    FragColor = vec4(vec3(ambient + diffuse + specular), 1.0);
+	float gamma = 2.2;
+    //FragColor = vec4(vec3(ambient + diffuse + specular), 1.0);
+    FragColor = vec4(ambient+(1.0-shadow)*(diffuse+specular), color.a);
     //FragColor = vec4(teN, 1.0);
 }
