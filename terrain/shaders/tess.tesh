@@ -47,8 +47,9 @@ void main()
 	vec3 p1 = gl_TessCoord.y * tcPosition[1];
 	vec3 p2 = gl_TessCoord.z * tcPosition[2];
 	vec3 n = normalize(tcNormal[0] + tcNormal[1] + tcNormal[2]);
-	
+
 	tePosition = p0 + p1 + p2;
+	teNormal = tePosition;
 	longlat = vec2((atan(tePosition.x, tePosition.y) / 3.1415926 + 1.0) * 0.5,
                         (asin(tePosition.z) / 3.1415926 + 0.5));
 	vec3 noiseOffset = vec3(texture(noiseTexture, longlat))/20.0;
@@ -58,7 +59,7 @@ void main()
 	gl_Position = vec4(tePosition, 1.0)*model*view*projection;
 	teLightSpace = vec4(tePosition, 1.0)*model*lightSpace;
 	teShadow = vec3(vec4(tePosition, 1.0)*model).xyz;
-	teNormal = n;//cross(getNormal(longlat), tePosition);
+	//teNormal = n;//cross(getNormal(longlat), tePosition);
 	teN = getNormal(longlat);
 	teTangent = normalize(tcTangent[0] + tcTangent[1] + tcTangent[2]);
 }

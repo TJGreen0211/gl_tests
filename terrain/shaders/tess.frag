@@ -23,6 +23,7 @@ uniform vec3 camPosition;
 
 uniform sampler2D texture1;
 uniform sampler2D depthMap;
+uniform sampler2D noiseTexture;
 
 float shadowCalculation(vec4 fLight) {
 	vec3 fragToLight = teShadow - lightPosition;
@@ -40,11 +41,6 @@ float shadowCalculation(vec4 fLight) {
 	}
 	shadow /= 9.0;
 	
-	
-	//shadow = currentDepth - 0.02 > closestDepth ? 1.0 : 0.0;
-	//if(fragToLight.z > 1.0)
-	//	shadow = 0.0;
-	
 	return shadow;
 }
 
@@ -59,7 +55,6 @@ float amplify(float d, float scale, float offset)
 
 void main()
 {
-	
 	vec4 ray = normalize(model*vec4(tePosition,1.0) - vec4(camPosition, 1.0));
 	vec4 color = vec4(texture(texture1, longlat)).rgba;
 	
@@ -105,7 +100,6 @@ void main()
 	if(dot(fL, teN) < 0.0) {
 		specular = vec3(0.0, 0.0, 0.0);
 	}
-	//vec3 lighting = (ambient + (1.0 - shadow) *(diffuse+specular));
 
 	//Tessellation Geometry Visualization
 	//float d1 = min(min(gTriDistance.x, gTriDistance.y), gTriDistance.z);
@@ -116,5 +110,5 @@ void main()
 	float gamma = 2.2;
     //FragColor = vec4(vec3(ambient + diffuse + specular), 1.0);
     FragColor = vec4(ambient+(1.0-shadow)*(diffuse+specular), color.a);
-    //FragColor = vec4(teN, 1.0);
+    //FragColor = vec4(teNormal, 1.0);
 }
