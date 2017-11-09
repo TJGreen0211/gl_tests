@@ -33,11 +33,6 @@ vec3 getNormal(vec2 uv) {
 	float p2 = texture(noiseTexture, vec2(uv.x+texelSize.x, uv.y)).x;
 	float p3 = texture(noiseTexture, vec2(uv.x-texelSize.x, uv.y)).x;
 
-	/*vec3 norm = cross(normalize(vec3(size.xy, p1-p0)), normalize(vec3(size.yx, p3-p2)));
-	float radius = sqrt(norm.x*norm.x + norm.y*norm.y + norm.z*norm.z);
-	float inclination = acos(norm.z/radius);
-	float azimuth = atan(norm.y/norm.x);
-	return vec3(radius, inclination, azimuth);*/
 	return cross(normalize(vec3(size.xy, p1-p0)), normalize(vec3(size.yx, p3-p2)));
 }
 
@@ -52,10 +47,7 @@ void main()
 	teNormal = tePosition;
 	longlat = vec2((atan(tePosition.x, tePosition.y) / 3.1415926 + 1.0) * 0.5,
                         (asin(tePosition.z) / 3.1415926 + 0.5));
-
-	vec3 color = vec3(texture(noiseTexture, longlat));
-	float height = color.z;
-	vec3 heightVec = (n * height)/20.0;
+	vec3 heightVec = (tePosition * vec3(texture(noiseTexture, longlat)).z)/20.0;
 
 	tePatchDistance = gl_TessCoord;
 	tePosition = vec3(tePosition.x+heightVec.x, tePosition.y+heightVec.y, tePosition.z+heightVec.z);
