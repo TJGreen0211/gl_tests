@@ -28,12 +28,12 @@ int perm[256]= {151,160,137,91,90,15,
   251,34,242,193,238,210,144,12,191,179,162,241, 81,51,145,235,249,14,239,107,
   49,192,214, 31,181,199,106,157,184, 84,204,176,115,121,50,45,127, 4,150,254,
   138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180};
-  
+
 int grad3[16][3] = {{0,1,1},{0,1,-1},{0,-1,1},{0,-1,-1},
                    {1,0,1},{1,0,-1},{-1,0,1},{-1,0,-1},
                    {1,1,0},{1,-1,0},{-1,1,0},{-1,-1,0}, // 12 cube edges
                    {1,0,-1},{-1,0,-1},{0,-1,1},{0,1,1}}; // 4 more to make 16
-                   
+
 int grad4[32][4]= {{0,1,1,1}, {0,1,1,-1}, {0,1,-1,1}, {0,1,-1,-1}, // 32 tesseract edges
                    {0,-1,1,1}, {0,-1,1,-1}, {0,-1,-1,1}, {0,-1,-1,-1},
                    {1,0,1,1}, {1,0,1,-1}, {1,0,-1,1}, {1,0,-1,-1},
@@ -42,7 +42,7 @@ int grad4[32][4]= {{0,1,1,1}, {0,1,1,-1}, {0,1,-1,1}, {0,1,-1,-1}, // 32 tessera
                    {-1,1,0,1}, {-1,1,0,-1}, {-1,-1,0,1}, {-1,-1,0,-1},
                    {1,1,1,0}, {1,1,-1,0}, {1,-1,1,0}, {1,-1,-1,0},
                    {-1,1,1,0}, {-1,1,-1,0}, {-1,-1,1,0}, {-1,-1,-1,0}};
-                   
+
 unsigned char simplex4[][4] = {{0,64,128,192},{0,64,192,128},{0,0,0,0},
   {0,128,192,64},{0,0,0,0},{0,0,0,0},{0,0,0,0},{64,128,192,0},
   {0,128,64,192},{0,0,0,0},{0,192,64,128},{0,192,128,64},
@@ -65,7 +65,7 @@ GLuint initPermTexture() {
 	GLuint textureID;
 	glGenTextures(1, &textureID);
 	glBindTexture(GL_TEXTURE_2D, textureID);
-	
+
 	pixels = (char*)malloc(256*256*4);
 	for(int i = 0; i < 256; i++) {
 		for(int j =0; j < 256; j++) {
@@ -87,11 +87,11 @@ GLuint initSimplexTexture() {
 	GLuint textureID;
 	glGenTextures(1, &textureID);
 	glBindTexture(GL_TEXTURE_1D, textureID);
-	
+
 	glTexImage1D( GL_TEXTURE_1D, 0, GL_RGBA, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, simplex4 );
 	glTexParameteri( GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
 	glTexParameteri( GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-	
+
 	return textureID;
 }
 
@@ -100,7 +100,7 @@ GLuint initGradTexture() {
 	GLuint textureID;
 	glGenTextures(1, &textureID);
 	glBindTexture(GL_TEXTURE_2D, textureID);
-	
+
 	pixels = (char*)malloc(256*256*4);
 	for(int i = 0; i < 256; i++) {
 		for(int j =0; j < 256; j++) {
@@ -127,7 +127,7 @@ GLuint generateDepthCubemap(int width, int height)
     for (int i = 0; i < 6; i++)
     {
         glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-    	
+
     }
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -142,12 +142,12 @@ GLuint generateDepthCubemap(int width, int height)
 
 GLuint loadTexture(char const * path, int alphaFlag)
 {
-    //Generate texture ID and load texture data 
+    //Generate texture ID and load texture data
     GLuint textureID;
     glGenTextures(1, &textureID);
     int width, height;
     unsigned char* image;
-    
+
     if(alphaFlag == 1) {
     	image = SOIL_load_image(path, &width, &height, 0, SOIL_LOAD_RGBA);
     	glBindTexture(GL_TEXTURE_2D, textureID);
@@ -181,18 +181,18 @@ GLuint generateTextureAttachment(int depth, int stencil, vec2 size) {
 		attachment_type = GL_DEPTH_COMPONENT;
 	else if(!depth && stencil)
 		attachment_type = GL_STENCIL_INDEX;
-		
+
 	glGenTextures(1, &textureID);
 	glBindTexture(GL_TEXTURE_2D, textureID);
 	if(!depth && !stencil)
 		glTexImage2D(GL_TEXTURE_2D, 0, attachment_type, size.x, size.y, 0, attachment_type, GL_UNSIGNED_BYTE, NULL);
 	else if(depth && !stencil)
 		glTexImage2D(GL_TEXTURE_2D, 0, attachment_type, size.x, size.y, 0, attachment_type, GL_FLOAT, NULL);
-		
+
 	else
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, size.x, size.y, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST ); 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);//GL_CLAMP_TO_BORDER
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);//GL_CLAMP_TO_BORDER
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -208,18 +208,18 @@ GLuint generateTextureAttachment3D(int depth, int stencil, vec2 size) {
 		attachment_type = GL_DEPTH_COMPONENT;
 	else if(!depth && stencil)
 		attachment_type = GL_STENCIL_INDEX;
-		
+
 	glGenTextures(1, &textureID);
 	glBindTexture(GL_TEXTURE_3D, textureID);
 	if(!depth && !stencil)
 		glTexImage3D(GL_TEXTURE_3D, 0, attachment_type, getWindowWidth(), getWindowHeight(), 1, 0, attachment_type, GL_UNSIGNED_BYTE, NULL);
 	else if(depth && !stencil)
 		glTexImage3D(GL_TEXTURE_3D, 0, attachment_type, getWindowWidth(), getWindowHeight(), 1, 0, attachment_type, GL_FLOAT, NULL);
-		
+
 	else
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_DEPTH24_STENCIL8, size.x, size.y, 1, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST ); 
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);//GL_CLAMP_TO_BORDER
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);//GL_CLAMP_TO_BORDER
     glBindTexture(GL_TEXTURE_3D, 0);
@@ -228,7 +228,7 @@ GLuint generateTextureAttachment3D(int depth, int stencil, vec2 size) {
 
 GLuint initInstanceBuffer(vec3 *vertices, int vertSize, vec3 *normals, int normSize, vec2 *texCoords, int texSize) {
 	GLuint vbo, vao;
-	
+
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 	glGenBuffers(1, &vbo);
@@ -237,14 +237,14 @@ GLuint initInstanceBuffer(vec3 *vertices, int vertSize, vec3 *normals, int normS
 	glBufferSubData(GL_ARRAY_BUFFER, 0, vertSize, vertices);
 	glBufferSubData(GL_ARRAY_BUFFER, vertSize, normSize, normals);
 	glBufferSubData(GL_ARRAY_BUFFER, vertSize+normSize, texSize, texCoords);
-	
+
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(0));
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(vertSize));
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2*sizeof(GLfloat), BUFFER_OFFSET(vertSize+normSize));
 	glEnableVertexAttribArray(2);
-	
+
 	glBindVertexArray(0);
 	return vao;
 }
@@ -298,7 +298,7 @@ GLuint initDepthShader() {
 	GLuint shader;
 	createShader(&shader, "shaders/depth.vert",
 		"shaders/depth.frag");
-	
+
 	return shader;
 }
 
@@ -330,7 +330,7 @@ GLuint initTessShader() {
 	//glAttachShader(shader, geomShader);
 	glAttachShader(shader, fragShader);
 	glLinkProgram(shader);
-	
+
 	return shader;
 }
 
@@ -341,7 +341,7 @@ vec3 *generateNormals(vec3 normals[], float *vertices, int size) {
 		one.x = vertices[i+3] - vertices[i];
 		one.y = vertices[i+4] - vertices[i+1];
 		one.z = vertices[i+5] - vertices[i+2];
-		
+
 		two.x = vertices[i+6] - vertices[i+3];
 		two.y = vertices[i+7] - vertices[i+4];
 		two.z = vertices[i+8] - vertices[i+5];
@@ -350,7 +350,7 @@ vec3 *generateNormals(vec3 normals[], float *vertices, int size) {
 		normals[c] = normal; c++;
 		normals[c] = normal; c++;
 	}
-	
+
 	return normals;
 }
 
@@ -365,7 +365,7 @@ GLuint initBufferTangents(vec3 *vertices, int vertSize, vec3 *normals, int normS
 	glBufferSubData(GL_ARRAY_BUFFER, vertSize, normSize, normals);
 	glBufferSubData(GL_ARRAY_BUFFER, vertSize+normSize, texSize, texCoords);
 	glBufferSubData(GL_ARRAY_BUFFER, vertSize+normSize+texSize, tanSize, tangents);
-	
+
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(0));
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(vertSize));
@@ -374,7 +374,7 @@ GLuint initBufferTangents(vec3 *vertices, int vertSize, vec3 *normals, int normS
 	glEnableVertexAttribArray(2);
 	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(vertSize+normSize+texSize));
 	glEnableVertexAttribArray(3);
-	
+
 	glBindVertexArray(0);
 	return vao;
 }
@@ -389,14 +389,14 @@ GLuint initBuffers(vec3 *vertices, int vertSize, vec3 *normals, int normSize, ve
 	glBufferSubData(GL_ARRAY_BUFFER, 0, vertSize, vertices);
 	glBufferSubData(GL_ARRAY_BUFFER, vertSize, normSize, normals);
 	glBufferSubData(GL_ARRAY_BUFFER, vertSize+normSize, texSize, texCoords);
-	
+
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(0));
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(vertSize));
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2*sizeof(GLfloat), BUFFER_OFFSET(vertSize+normSize));
 	glEnableVertexAttribArray(2);
-	
+
 	glBindVertexArray(0);
 	return vao;
 }
@@ -409,7 +409,7 @@ GLuint initNoiseBuffer(vec3 *points, int pointSize) {
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, pointSize, NULL, GL_STATIC_DRAW);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, pointSize, points);
-	
+
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), BUFFER_OFFSET(0));
 	glEnableVertexAttribArray(0);
 	glBindVertexArray(0);
@@ -423,7 +423,7 @@ GLuint initFramebuffer(GLuint *textureID) {
 	vec2 size = {1024.0, 512.0};
 	*textureID = generateTextureAttachment(0, 0, size);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *textureID, 0);
-	
+
 	GLuint rbo;
 	glGenRenderbuffers(1, &rbo);
 	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
@@ -433,7 +433,7 @@ GLuint initFramebuffer(GLuint *textureID) {
 	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		printf("ERROR: Framebuffer is not complete");
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	
+
 	return fbo;
 }
 
@@ -444,7 +444,7 @@ GLuint initFramebuffer3D() {
 	vec2 size = {1024.0, 512.0};
 	textureColorBuffer = generateTextureAttachment3D(0, 0, size);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorBuffer, 0);
-	
+
 	GLuint rbo;
 	glGenRenderbuffers(1, &rbo);
 	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
@@ -454,7 +454,7 @@ GLuint initFramebuffer3D() {
 	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		printf("ERROR: Framebuffer is not complete");
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	
+
 	return fbo;
 }
 
@@ -468,17 +468,17 @@ GLuint initDepthbuffer() {
 	GLuint status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	  if(status != GL_FRAMEBUFFER_COMPLETE)
 		  printf("GL_FRAMEBUFFER_COMPLETE failed, CANNOT use FBO\n");
-	
+
 	glDrawBuffer(GL_NONE);
 	glReadBuffer(GL_NONE);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	
+
 	return fbo;
 }
 
 GLuint initNoise() {
 	GLuint vao;
-	
+
 	float vertices[] = {
 		-1.0f, -1.0f, 1.0f,
         -1.0f,  1.0f, 1.0f,
@@ -490,7 +490,7 @@ GLuint initNoise() {
 	int numVertices = (sizeof(vertices)/sizeof(vertices[0]));
 	int vecSize = numVertices/3;
 	vec3 vertArray[vecSize];
-	
+
 	int c = 0;
     for(int i = 0; i < numVertices; i+=3) {
     	vertArray[c].x = vertices[i];
@@ -498,9 +498,9 @@ GLuint initNoise() {
     	vertArray[c].z = vertices[i+2];
     	c++;
     }
-	
-	
-	
+
+
+
 	vao = initNoiseBuffer(vertArray, sizeof(vertices));
 	return vao;
 }
@@ -515,7 +515,7 @@ GLuint initQuad() {
          1.0f, -1.0f, 1.0f,
         -1.0f, -1.0f, 1.0f
 	};
-	
+
 	float texCoords[] = {
 		0.0f, 0.0f,
     	0.0f, 1.0f,
@@ -529,7 +529,7 @@ GLuint initQuad() {
     int numTexCoords = (sizeof(texCoords)/sizeof(texCoords[0]));
 	int vecSize = numVertices/3;
 	int texSize = numTexCoords/2;
-    
+
     vec3 vertArray[vecSize];
     vec3 normArray[vecSize];
     vec2 texArray[texSize];
@@ -549,7 +549,7 @@ GLuint initQuad() {
     *normArray = *generateNormals(normArray, vertices, numVertices);
     vec3 vna[vecSize];
 	*vna = *generateSmoothNormals(vna, vertArray, normArray, vecSize);
-    vao = initBuffers(vertArray, sizeof(vertices), vna, sizeof(vertices), texArray, sizeof(texCoords));    
+    vao = initBuffers(vertArray, sizeof(vertices), vna, sizeof(vertices), texArray, sizeof(texCoords));
     return vao;
 }
 
@@ -560,7 +560,7 @@ GLuint initQuadCube(int divisions) {
 	vec3 vna[qc.vertexNumber];
 	vec3 tangent[qc.vertexNumber];
 	*tangent = *generateTangents(qc.vertexNumber, qc.points, tangent);
-	
+
 	for(int i = 0; i < qc.vertexNumber; i++) {
     	texCoords[i].x = (atan2(qc.points[i].y, qc.points[i].x) / 3.1415926 + 1.0) * 0.5;
     	texCoords[i].y = asin(qc.points[i].z) / 3.1415926 + 0.5;
@@ -568,7 +568,7 @@ GLuint initQuadCube(int divisions) {
     *vna = *generateSmoothNormals(vna, qc.points, qc.normals, qc.vertexNumber);
     //vao = initBuffers(qc.points, qc.size, vna, qc.nsize, texCoords, sizeof(texCoords[0])*qc.vertexNumber);
     vao = initBufferTangents(qc.points, qc.size, vna, qc.nsize, tangent, qc.nsize, texCoords, sizeof(texCoords[0])*qc.vertexNumber);
-    
+
     return vao;
 }
 
@@ -578,13 +578,13 @@ GLuint initObjectBuffer(char *path) {
 	vec3 vna[ship.vertexNumber];
 	vec2 texCoords[ship.vertexNumber];
 	*vna = *generateSmoothNormals(vna, ship.points, ship.normals, ship.vertexNumber);
-	
+
 	for(int i = 0; i < ship.vertexNumber; i++) {
     	texCoords[i].x = 1.0;
     	texCoords[i].y = 0.0;
     }
     vao = initBuffers(ship.points, ship.size, ship.normals, ship.nsize, texCoords, sizeof(texCoords[0])*ship.vertexNumber);
-	
+
 	return vao;
 }
 
@@ -594,13 +594,13 @@ GLuint initRockBuffer(char *path) {
 	vec3 vna[object.vertexNumber];
 	vec2 texCoords[object.vertexNumber];
 	*vna = *generateSmoothNormals(vna, object.points, object.normals, object.vertexNumber);
-	
+
 	for(int i = 0; i < object.vertexNumber; i++) {
     	texCoords[i].x = 1.0;
     	texCoords[i].y = 0.0;
     }
     vao = initInstanceBuffer(object.points, object.size, object.normals, object.nsize, texCoords, sizeof(texCoords[0])*object.vertexNumber);
-	
+
 	return vao;
 }
 
@@ -610,12 +610,12 @@ GLuint initSphere() {
     vec3 vna[planet.vertexNumber];
     vec2 texCoords[planet.vertexNumber];
     *vna = *generateSmoothNormals(vna, planet.points, planet.normals, planet.vertexNumber);
-    
+
     for(int i = 0; i < planet.vertexNumber; i++) {
     	texCoords[i].x = (atan2(planet.points[i].y, planet.points[i].x) / 3.1415926 + 1.0) * 0.5;
     	texCoords[i].y = asin(planet.points[i].z) / 3.1415926 + 0.5;
     }
-    
+
 	vao = initBuffers(planet.points, planet.size, planet.normals, planet.nsize, texCoords, sizeof(texCoords[0])*planet.vertexNumber);
 	return vao;
 }
@@ -631,7 +631,7 @@ vec4 getCameraPosition(mat4 position) {
 	mat4 mvTranspose = transposemat4(multiplymat4(position, getViewPosition()));
 	vec4 inverseCamera = {-mvTranspose.m[3][0], -mvTranspose.m[3][1], -mvTranspose.m[3][2], -mvTranspose.m[3][3]};
 	vec4 camPosition = multiplymat4vec4(mvTranspose, inverseCamera);
-	
+
 	return camPosition;
 }
 
@@ -639,7 +639,7 @@ vec4 getPositionModelspace(mat4 position, mat4 model) {
 	mat4 mvTranspose = transposemat4(multiplymat4(position, model));
 	vec4 inverseM = {-mvTranspose.m[3][0], -mvTranspose.m[3][1], -mvTranspose.m[3][2], -mvTranspose.m[3][3]};
 	vec4 positionModelspace = multiplymat4vec4(mvTranspose, inverseM);
-	
+
 	return positionModelspace;
 }
 
@@ -676,63 +676,63 @@ void drawAtmosphere(GLuint VAO, GLuint shader, GLuint sky, int vertices, mat4 m,
 	glBlendFunc(GL_ONE, GL_ONE);
 	mat4 positionMatrix = translatevec3(position);
 	vec4 camPosition = getCameraPosition(positionMatrix);
-	
+
 	if(pow(camPosition.x, 2.0) + pow(camPosition.y, 2.0) + pow(camPosition.z, 2.0) < pow(m.m[0][0], 2.0)) {
 		glUseProgram(sky);
-		glCullFace(GL_FRONT);	
+		glCullFace(GL_FRONT);
 	}
 	else
 		glUseProgram(shader);
-		
+
 	initMVP(shader, m, getViewMatrix());
-	
+
 	float fOuter = scale*scaleFactor;
 	float fInner = scale;
 	vec3 C_R = {0.3, 0.7, 1.0};
 	float E = 14.3;
-	
+
 	glUniform1f(glGetUniformLocation(shader, "fInnerRadius"), fInner);
 	glUniform1f(glGetUniformLocation(shader, "fOuterRadius"), fOuter);
 	glUniform3f(glGetUniformLocation(shader, "camPosition"), camPosition.x, camPosition.y, camPosition.z);
 	glUniform3f(glGetUniformLocation(shader, "C_R"), C_R.x, C_R.y, C_R.z);
 	glUniform1f(glGetUniformLocation(shader, "E"), E);
 	glUniform1f(glGetUniformLocation(shader, "time"), glfwGetTime());
-	
+
 	glUniform3f(glGetUniformLocation(shader, "camPosition"), camPosition.x, camPosition.y, camPosition.z);
 	glUniform3f(glGetUniformLocation(shader, "lightPosition"), lightPosition.x, lightPosition.y, lightPosition.z);
-	
+
 	glBindVertexArray(VAO);
 	glDrawArrays(GL_TRIANGLES, 0, vertices);
 	glBindVertexArray(0);
-	
+
 	glDisable(GL_BLEND);
 	glCullFace(GL_BACK);
 }
 
 void drawInstanced(GLuint vao, GLuint vbo, GLuint shader, int vertexNumber, int drawAmount, vec3 *positions, mat4 *rotations, mat4 model, float *scaleArray, float theta, vec4 lightPosition) {
 	vec4 cameraPos = getCameraPosition(model);
-	
+
 	/*for(int i = 0; i < numDraws; i++){
 		float deg = i * degToRad;
 		positions[i].x = cos(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
 		positions[i].y = sin(deg)*innerRad+(-(((float)rand()/(float)(RAND_MAX)) * width));
 		positions[i].z = -(((float)rand()/(float)(RAND_MAX)) * height);
 	}*/
-	
+
 	vec3 translation[drawAmount];
 	for(int i = 0; i < drawAmount; i++){
-		
+
 		translation[i].x = cos(scaleArray[i]+theta/85.0)*140.0+positions[i].x;
 		translation[i].y = positions[i].y;
 		translation[i].z = sin(scaleArray[i]+theta/85.0)*140.0+positions[i].z;
 	}
-	
+
 	/*vec3 translation;
 	translation.x = (65.0*1.5) * cos(theta/75.0);
 	translation.y = 0.0;
 	translation.z = (65.0*1.5) * sin(theta/75.0);*/
 	vec3 center = {65.0, 0.0, 0.0};
-	
+
 	mat4 modelArr[vertexNumber];
 	for(int i = 0; i < vertexNumber; i++) {
 		//modelArr[i] = multiplymat4(multiplymat4(translatevec3(translation), rotations[i]), scale(scaleArray[i]/10.0));
@@ -742,10 +742,10 @@ void drawInstanced(GLuint vao, GLuint vbo, GLuint shader, int vertexNumber, int 
 		//modelArr[i] = multiplymat4(multiplymat4(translate(positions[i].x+65.0/2.0, positions[i].y, positions[i].z), rotations[i]), scale(scaleArray[i]/10.0));
 	}
 	//multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(translation)), scale(15.0)),rotateX(90.0));
-	
+
 	glBindVertexArray(vao);
 	initMVP(shader, model, getViewMatrix());
-	
+
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), BUFFER_OFFSET(0));
 	glEnableVertexAttribArray(3);
@@ -755,14 +755,14 @@ void drawInstanced(GLuint vao, GLuint vbo, GLuint shader, int vertexNumber, int 
 	glEnableVertexAttribArray(5);
 	glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), BUFFER_OFFSET(3*sizeof(vec4)));
 	glEnableVertexAttribArray(6);
-	
+
 	glVertexAttribDivisor(3, 1);
 	glVertexAttribDivisor(4, 1);
 	glVertexAttribDivisor(5, 1);
 	glVertexAttribDivisor(6, 1);
-	
+
 	glBufferData(GL_ARRAY_BUFFER, sizeof(mat4)*vertexNumber, &modelArr, GL_STATIC_DRAW);
-	
+
 	glUniform3f(glGetUniformLocation(shader, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	glUniform3f(glGetUniformLocation(shader, "lightPosition"), lightPosition.x, lightPosition.y, lightPosition.z);
 	glDrawArraysInstanced(GL_TRIANGLES, 0, vertexNumber, drawAmount);
@@ -773,7 +773,7 @@ void drawTess(GLuint vao, GLuint shader, int vertices, GLuint texture, GLuint te
 	glUseProgram(shader);
 	initMVP(shader, m, getViewMatrix());
 	glBindVertexArray(vao);
-	
+
 	mat4 positionMatrix = translatevec3(position);
 	vec4 camPosition = getCameraPosition(positionMatrix);
 	glUniform3f(glGetUniformLocation(shader, "camPosition"), camPosition.x, camPosition.y, camPosition.z);
@@ -796,10 +796,10 @@ void drawTess(GLuint vao, GLuint shader, int vertices, GLuint texture, GLuint te
 
 void drawNoise(GLuint vao, GLuint shader, int vertices, GLuint permTexture, GLuint simplexTexture, GLuint gradTexture, int animate) {
 	glDisable(GL_CULL_FACE);
-	glDisable(GL_DEPTH_TEST); 
+	glDisable(GL_DEPTH_TEST);
 	glUseProgram(shader);
 	glBindVertexArray(vao);
-	
+
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, permTexture);
 	glUniform1i(glGetUniformLocation(shader, "permTexture"), 0);
@@ -812,11 +812,11 @@ void drawNoise(GLuint vao, GLuint shader, int vertices, GLuint permTexture, GLui
 	initMVP(shader, identityMatrix(), getViewMatrix());
 	glUniform1f(glGetUniformLocation(shader, "systemTime"), glfwGetTime());
 	glUniform1i(glGetUniformLocation(shader, "animated"), animate);
-	
+
 	glDrawArrays(GL_TRIANGLES, 0, vertices);
 	glBindVertexArray(0);
 	glEnable(GL_CULL_FACE);
-	glEnable(GL_DEPTH_TEST); 
+	glEnable(GL_DEPTH_TEST);
 }
 
 void draw(GLuint vao, GLuint shader, int vertices, GLuint texture, GLuint normal, mat4 m, vec3 position, vec4 lightPosition, mat4 lightSpaceMatrix) {
@@ -829,7 +829,7 @@ void draw(GLuint vao, GLuint shader, int vertices, GLuint texture, GLuint normal
 	glBindVertexArray(vao);
 	mat4 positionMatrix = translatevec3(position);
 	vec4 camPosition = getCameraPosition(positionMatrix);
-	
+
 	glUniform3f(glGetUniformLocation(shader, "cameraPos"), camPosition.x, camPosition.y, camPosition.z);
 	glUniform3f(glGetUniformLocation(shader, "lightPosition"), lightPosition.x, lightPosition.y, lightPosition.z);
 	glUniformMatrix4fv(glGetUniformLocation(shader, "lightSpace"), 1, GL_FALSE, &lightSpaceMatrix.m[0][0]);
@@ -856,7 +856,7 @@ vec4 rotateLight(GLuint vao, GLuint shader, int vertices, GLuint texture, float 
 	glBindVertexArray (vao);
 	mat4 positionMatrix = translatevec3(position);
 	vec4 camPosition = getCameraPosition(positionMatrix);
-	
+
 	vec3 translation;
 	translation.x = (-400.0) * cos(theta/75.0);
 	translation.y = 0.0;
@@ -872,7 +872,7 @@ vec4 rotateLight(GLuint vao, GLuint shader, int vertices, GLuint texture, float 
 	glDrawArrays(GL_TRIANGLES, 0, vertices);
 	glBindVertexArray(0);
 	glBindVertexArray(0);
-	
+
 	vec4 l = {translation.x, translation.y, translation.z, 1.0};
 	return l;
 }
@@ -883,7 +883,7 @@ void drawOrbit(GLuint vao, GLuint shader, int vertices, GLuint texture, float th
 	glBindVertexArray (vao);
 	mat4 positionMatrix = translatevec3(position);
 	vec4 camPosition = getCameraPosition(positionMatrix);
-	
+
 	vec3 translation;
 	translation.x = (200.0) * cos(theta/100.0);
 	translation.y = 0.0;
@@ -937,13 +937,13 @@ float getDeltaTime(float lastFrame) {
 vec3 *getRandomPositions(vec3 *positions, int numDraws) {
 	float width = 30.0;
 	float height = 1.0;
-	
+
 	for(int i = 0; i < numDraws; i++){
 		positions[i].x = -(((float)rand()/(float)(RAND_MAX)) * width);
 		positions[i].y = -((float)rand()/(float)(RAND_MAX)) * height;
 		positions[i].z = -(((float)rand()/(float)(RAND_MAX)) * width);
 	}
-	
+
 	return positions;
 }
 
@@ -951,17 +951,17 @@ mat4 *getRandomRotations(mat4 *rotations, int numDraws) {
 	vec3 xAxis = {1.0, 0.0, 0.0};
 	vec3 yAxis = {0.0, 1.0, 0.0};
 	vec3 zAxis = {0.0, 0.0, 1.0};
-	
+
 	quaternion xRot[numDraws], yRot[numDraws];
 	for(int i = 0; i < numDraws; i++){
 		xRot[i] = angleAxis((-(((float)rand()/(float)(RAND_MAX)) * M_PI)), xAxis, zAxis);
 		yRot[i] = angleAxis((-(((float)rand()/(float)(RAND_MAX)) * M_PI)), yAxis, zAxis);
 	}
-	
+
 	for(int i = 0; i < numDraws; i++) {
 		rotations[i] = quaternionToRotation(quatMultiply(xRot[i], yRot[i]));
 	}
-	
+
 	return rotations;
 }
 
@@ -985,7 +985,7 @@ int checkFileChange(const char *path, time_t oldMTime) {
 	return file_stat.st_mtime > oldMTime;
 }
 
-int main(int argc, char *argv[]) 
+int main(int argc, char *argv[])
 {
 	float theta = 0.0;
 	chdir("/Users/tjgreen/Documents/OpenGL/gl_tests/terrain");
@@ -995,12 +995,12 @@ int main(int argc, char *argv[])
 	GLuint skyShader = initSkyShader();
 	GLuint atmosphereShader = initAtmosphereShader();
 	GLuint ringShader = initLightingShader();
-	//GLuint waterShader = initWaterShader();
+	GLuint waterShader = initWaterShader();
 	GLuint depthShader = initDepthShader();
 	GLuint fboShader = initFramebufferShader();
 	GLuint noiseRenderShader = initNoiseShader();
 	GLuint instanceShader = initInstanceShader();
-	
+
 	GLuint earthTex = loadTexture("shaders/earth.jpg", 0);
 	GLuint moonTex = loadTexture("shaders/moon.jpg", 0);
 	GLuint planetTex = loadTexture("assets/europa.jpg", 0);
@@ -1012,16 +1012,16 @@ int main(int argc, char *argv[])
 	GLuint rockVAO = initRockBuffer("shaders/rock.obj");
 	GLuint rock2VAO = initRockBuffer("shaders/rock2.obj");
 	GLuint rock3VAO = initRockBuffer("shaders/rock3.obj");
-	
+
 	GLuint quadCubeVAO = initQuadCube(30);
-	
+
 	GLuint depthbuffer = initDepthbuffer();
 	GLuint framebuffer = initFramebuffer(&textureColorBuffer);
 	GLuint sunFramebuffer = initFramebuffer(&sunNoiseTexture);
 	//GLuint framebuffer3D = initFramebuffer3D();
 	GLuint quadVAO = initQuad();
 	GLuint sNoiseVAO = initNoise();
-	
+
 	GLuint permTexture = initPermTexture();
 	GLuint simplexTexture = initSimplexTexture();
 	GLuint gradTexture = initGradTexture();
@@ -1029,46 +1029,52 @@ int main(int argc, char *argv[])
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
-	
+
 	int instancedDraws = 720;
-	
+
 	vec3 pos1[instancedDraws];
 	*pos1 = *getRandomPositions(pos1, instancedDraws);
 	vec3 pos2[instancedDraws];
 	*pos2 = *getRandomPositions(pos2, instancedDraws);
 	vec3 pos3[instancedDraws];
 	*pos3 = *getRandomPositions(pos3, instancedDraws);
-	
+
 	mat4 rotations[instancedDraws];
 	*rotations = *getRandomRotations(rotations, instancedDraws);
-	
+
 	float scaleArray[instancedDraws];
 	for(int i = 0; i < instancedDraws; i++){
 		scaleArray[i] = -((float)rand()/(float)(RAND_MAX)) * 360.0;
 	}
-	
+
 	GLuint positionsVBO;
 	glGenBuffers(1, &positionsVBO);
-	
+
 	mat4 model, atmo;
 	glViewport(0, 0, getWindowWidth(), getWindowHeight());
-	
+
 	float deltaTime = 0.0;
 	float lastFrame = 0.0;
 	float rad = 180.0 / M_PI;
 	vec3 translation = {65.0, 0.0, 0.0};
 	mat4 lightProjection = ortho(-400.0, 400.0, -400.0, 400.0, zNear, zFar);
 	//mat4 lightProjection = perspective(90.0, getWindowWidth()/getWindowHeight(), zNear, zFar);
-	time_t changeDate = getFileLastChangeTime("shaders/tess.vert");
+	time_t changeDate = getFileLastChangeTime("shaders/tess.tcsh");
+	time_t changeDate2 = getFileLastChangeTime("shaders/tess.tesh");
 	while(!glfwWindowShouldClose(window))
-	{	
-		if(checkFileChange("shaders/tess.frag", changeDate)) {
+	{
+		if(checkFileChange("shaders/tess.tcsh", changeDate)) {
 			printf("FILE CHANGED");
 			tessShader = initTessShader();
 		}
-		changeDate = getFileLastChangeTime("shaders/tess.frag");
+		if(checkFileChange("shaders/tess.tesh", changeDate2)) {
+			printf("FILE CHANGED");
+			tessShader = initTessShader();
+		}
+		changeDate = getFileLastChangeTime("shaders/tess.tcsh");
+		changeDate2 = getFileLastChangeTime("shaders/tess.tesh");
 		//printf("%ld\n", (long)changeDate);
-		
+
 		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			drawNoise(sNoiseVAO, noiseRenderShader, 6, permTexture, simplexTexture, gradTexture, 0);
@@ -1079,21 +1085,21 @@ int main(int argc, char *argv[])
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
 		doMovement(deltaTime);
-		
+
 		glBindFramebuffer(GL_FRAMEBUFFER, sunFramebuffer);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			drawNoise(sNoiseVAO, noiseRenderShader, 6, permTexture, simplexTexture, gradTexture, 1);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		
+
 		float fScale = 63.710;
-		float fScaleFactor = 1.25;
-		
+		float fScaleFactor = 1.05;//1.025;
+
 		//int terrainMaxLOD = (int)(log(fScale)/log(2));
 		//printf("%f, %f, %f\n", lightPosition.x, lightPosition.y, lightPosition.z);
-		
+
 		//glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 		//glClearColor(1.0, 1.0, 1.0, 1.0);
-		
+
 		//Light calculations per frame
 		vec4 lightPosition = rotateLight(quadCubeVAO, ringShader, qc.vertexNumber, sunNoiseTexture, theta, translation);
 		vec3 lightPositionXYZ = {lightPosition.x, lightPosition.y, lightPosition.z};
@@ -1106,7 +1112,7 @@ int main(int argc, char *argv[])
 		vec4 negativeLight = {lightPosition.x, lightPosition.y, lightPosition.z, lightPosition.w};
 		lightView = multiplymat4(rxry, translatevec4(negativeLight));
 		mat4 lightSpaceMatrix = multiplymat4(lightProjection, lightView);
-		
+
 		glBindFramebuffer(GL_FRAMEBUFFER, depthbuffer);
 			glClear(GL_DEPTH_BUFFER_BIT);
 			vec3 position;
@@ -1125,40 +1131,40 @@ int main(int argc, char *argv[])
 			//model = multiplymat4(translate(25.0, 0.0, -90.0), scale(10.0));
 			//drawDepth(quadVAO, depthShader, 6, lightPosition, model, lightSpaceMatrix);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		
+
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 		glClearColor(0.1, 0.0, 0.2, 1.0);
-		
+
 		model = multiplymat4(translate(-25.0, 5.0, 5.0), scale(10.0));
 		//draw(quadCubeVAO, ringShader, qc.vertexNumber, moonTex, model, translation, lightPosition);
-		
+
 		//draw(quadCubeVAO, ringShader, qc.vertexNumber, sunNoiseTexture, model, translation);
 		drawOrbit(quadCubeVAO, ringShader, qc.vertexNumber, moonTex, theta, model, translation);
-		
+
 		model = multiplymat4(multiplymat4(translatevec3(translation), rotateX(80.0)), scale(fScale*1.5));
 		draw(ringVAO, ringShader, planetRing.vertexNumber, ringTex, planetNorm, model, translation, lightPosition, lightSpaceMatrix);
 		model = multiplymat4(translatevec3(translation), scale(fScale));
 		drawTess(quadCubeVAO, tessShader, qc.vertexNumber, textureColorBuffer, planetTex, model, translation, lightPosition, lightSpaceMatrix);
 		model = multiplymat4(translatevec3(translation), scale(fScale*1.01));
-		//draw(quadCubeVAO, ringShader, qc.vertexNumber, planetTex, planetNorm, model, translation, lightPosition, lightSpaceMatrix);
-		
+		//draw(quadCubeVAO, waterShader, qc.vertexNumber, planetTex, planetNorm, model, translation, lightPosition, lightSpaceMatrix);
+
 		model = multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(lightPositionXYZ)), scale(15.0)),rotateX(90.0));
 		draw(quadCubeVAO, ringShader, qc.vertexNumber, sunNoiseTexture, planetNorm, model, lightPositionXYZ, lightPosition, lightSpaceMatrix);
-		
+
 		model = multiplymat4(translate(-75.0, 25.0, 0.0), scale(10.0));
 		draw(quadVAO, fboShader, 6, textureColorBuffer, planetNorm, model, translation, lightPosition, lightSpaceMatrix);
-		
+
 		vec3 arcBallPos = getCamera();
 		float modelRotationAngle = 0.0;
 
-		model = multiplymat4(multiplymat4(translate(-arcBallPos.x, -arcBallPos.y, -arcBallPos.z), rotateX(modelRotationAngle)), scale(1.0));
+		model = multiplymat4(multiplymat4(translate(-arcBallPos.x, -arcBallPos.y, -arcBallPos.z), rotateX(modelRotationAngle)), scale(0.5));
 		draw(objectVAO, ringShader, ship.vertexNumber, earthTex, planetNorm, model, lightPositionXYZ, lightPosition, lightSpaceMatrix);
-		
+
 		glUseProgram(instanceShader);
 		drawInstanced(rockVAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos1, rotations, model, scaleArray, theta, lightPosition);
 		drawInstanced(rock2VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos2, rotations, model, scaleArray, theta, lightPosition);
 		drawInstanced(rock3VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos3, rotations, model, scaleArray, theta, lightPosition);
-		
+
 		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
 		//draw(quadCubeVAO, ringShader, qc.vertexNumber, earthTex, atmo, translation, lightPosition, lightSpaceMatrix);
 		//drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
@@ -1166,7 +1172,7 @@ int main(int argc, char *argv[])
 		glfwPollEvents();
 		glfwSwapBuffers(window);
 	}
-	
+
 	glfwTerminate();
 	return 0;
 }
@@ -1179,7 +1185,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     	actionPress = GLFW_PRESS;
     else if(action == GLFW_RELEASE)
     	actionPress = 0;
-    	
+
     if (key == GLFW_KEY_W && action == GLFW_PRESS){
     	keys = GLFW_KEY_W;
     }
