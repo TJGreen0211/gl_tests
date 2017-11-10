@@ -769,7 +769,7 @@ void drawInstanced(GLuint vao, GLuint vbo, GLuint shader, int vertexNumber, int 
 	glBindVertexArray(0);
 }
 
-void drawTess(GLuint vao, GLuint shader, int vertices, GLuint texture, GLuint texture2, mat4 m, vec3 position, vec4 lightPosition, mat4 lightSpaceMatrix) {
+void drawTess(GLuint vao, GLuint shader, int vertices, GLuint texture, GLuint texture2, GLuint normal, GLuint displacement, mat4 m, vec3 position, vec4 lightPosition, mat4 lightSpaceMatrix) {
 	glUseProgram(shader);
 	initMVP(shader, m, getViewMatrix());
 	glBindVertexArray(vao);
@@ -789,6 +789,15 @@ void drawTess(GLuint vao, GLuint shader, int vertices, GLuint texture, GLuint te
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D, depthMap);
 	glUniform1i(glGetUniformLocation(shader, "depthMap"), 2);
+
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, normal);
+	glUniform1i(glGetUniformLocation(shader, "normalTex"), 3);
+
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, displacement);
+	glUniform1i(glGetUniformLocation(shader, "displacementTex"), 4);
+
 	glPatchParameteri(GL_PATCH_VERTICES, vertices);
 	glDrawArrays(GL_PATCHES, 0, vertices);
 	glBindVertexArray(0);
@@ -985,6 +994,18 @@ int checkFileChange(const char *path, time_t oldMTime) {
 	return file_stat.st_mtime > oldMTime;
 }
 
+int checkShaderChange(GLuint shader, char *vert, char *frag, time_t vertTime, time_t fragTime) {
+	if(checkFileChange(vert, vertTime)) {
+		printf("FILE CHANGED\n");
+		return 1;
+	}
+	if(checkFileChange(frag, fragTime)) {
+		printf("FILE CHANGED\n");
+		return 1;
+	}
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	float theta = 0.0;
@@ -1004,8 +1025,10 @@ int main(int argc, char *argv[])
 	GLuint earthTex = loadTexture("shaders/earth.jpg", 0);
 	GLuint moonTex = loadTexture("shaders/moon.jpg", 0);
 	GLuint planetTex = loadTexture("assets/europa.jpg", 0);
+	GLuint planetNorm = loadTexture("assets/NormalMap.png", 0);
+	GLuint planetDisp = loadTexture("assets/DisplacementMap.png", 0);
+
 	GLuint ringTex = loadTexture("shaders/ring.png", 1);
-	GLuint planetNorm = loadTexture("shaders/marsNormal.png", 0);
 	GLuint sphereVAO = initSphere();
 	GLuint ringVAO = initRing();
 	GLuint objectVAO = initObjectBuffer("assets/rifter.obj");
@@ -1059,20 +1082,20 @@ int main(int argc, char *argv[])
 	vec3 translation = {65.0, 0.0, 0.0};
 	mat4 lightProjection = ortho(-400.0, 400.0, -400.0, 400.0, zNear, zFar);
 	//mat4 lightProjection = perspective(90.0, getWindowWidth()/getWindowHeight(), zNear, zFar);
-	time_t changeDate = getFileLastChangeTime("shaders/tess.tcsh");
-	time_t changeDate2 = getFileLastChangeTime("shaders/tess.tesh");
+
+	char *vertCheck = "shaders/water.vert";
+	char *fragCheck = "shaders/water.frag";
+	time_t vertTime = getFileLastChangeTime(vertCheck);
+	time_t fragTime = getFileLastChangeTime(fragCheck);
+
 	while(!glfwWindowShouldClose(window))
 	{
-		if(checkFileChange("shaders/tess.tcsh", changeDate)) {
-			printf("FILE CHANGED");
-			tessShader = initTessShader();
+		if(checkShaderChange(tessShader, vertCheck, fragCheck, vertTime, fragTime)) {
+			waterShader = initWaterShader();
+			vertTime = getFileLastChangeTime(vertCheck);
+			fragTime = getFileLastChangeTime(fragCheck);
 		}
-		if(checkFileChange("shaders/tess.tesh", changeDate2)) {
-			printf("FILE CHANGED");
-			tessShader = initTessShader();
-		}
-		changeDate = getFileLastChangeTime("shaders/tess.tcsh");
-		changeDate2 = getFileLastChangeTime("shaders/tess.tesh");
+
 		//printf("%ld\n", (long)changeDate);
 
 		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
@@ -1092,7 +1115,7 @@ int main(int argc, char *argv[])
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		float fScale = 63.710;
-		float fScaleFactor = 1.05;//1.025;
+		float fScaleFactor = 1.25;//1.025;
 
 		//int terrainMaxLOD = (int)(log(fScale)/log(2));
 		//printf("%f, %f, %f\n", lightPosition.x, lightPosition.y, lightPosition.z);
@@ -1144,9 +1167,9 @@ int main(int argc, char *argv[])
 		model = multiplymat4(multiplymat4(translatevec3(translation), rotateX(80.0)), scale(fScale*1.5));
 		draw(ringVAO, ringShader, planetRing.vertexNumber, ringTex, planetNorm, model, translation, lightPosition, lightSpaceMatrix);
 		model = multiplymat4(translatevec3(translation), scale(fScale));
-		drawTess(quadCubeVAO, tessShader, qc.vertexNumber, textureColorBuffer, planetTex, model, translation, lightPosition, lightSpaceMatrix);
+		drawTess(quadCubeVAO, tessShader, qc.vertexNumber, textureColorBuffer, planetTex, planetNorm, planetDisp, model, translation, lightPosition, lightSpaceMatrix);
 		model = multiplymat4(translatevec3(translation), scale(fScale*1.01));
-		//draw(quadCubeVAO, waterShader, qc.vertexNumber, planetTex, planetNorm, model, translation, lightPosition, lightSpaceMatrix);
+		draw(quadCubeVAO, waterShader, qc.vertexNumber, planetTex, planetNorm, model, translation, lightPosition, lightSpaceMatrix);
 
 		model = multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(lightPositionXYZ)), scale(15.0)),rotateX(90.0));
 		draw(quadCubeVAO, ringShader, qc.vertexNumber, sunNoiseTexture, planetNorm, model, lightPositionXYZ, lightPosition, lightSpaceMatrix);
@@ -1167,7 +1190,7 @@ int main(int argc, char *argv[])
 
 		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
 		//draw(quadCubeVAO, ringShader, qc.vertexNumber, earthTex, atmo, translation, lightPosition, lightSpaceMatrix);
-		//drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
+		drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
 
 		glfwPollEvents();
 		glfwSwapBuffers(window);
