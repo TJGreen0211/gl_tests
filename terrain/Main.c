@@ -505,6 +505,57 @@ GLuint initNoise() {
 	return vao;
 }
 
+GLuint initSubQuad() {
+	int divisions = 200;
+	float fdivisions = 200.0;
+
+	GLuint vao;
+	vec3 vertices[divisions*divisions*6];
+	vec2 texCoords[divisions*divisions*6];
+
+	vec3 start = {1.0, 1.0, -1.0};
+	float offset = 2.0/(fdivisions);
+	int index = 0;
+	for(int i = 0; i < divisions; i++) {
+		start.x = 1.0;
+		for(int j = 0; j < divisions; j++) {
+			vec3 face0 = {start.x,   	  start.y,   start.z};
+			vec3 face1 = {start.x-offset, start.y-offset, start.z};
+			vec3 face2 = {start.x,        start.y-offset, start.z};
+			vec3 face3 = {start.x-offset, start.y,   start.z};
+
+			vertices[index++] = face2;
+			vertices[index++] = face1;
+			vertices[index++] = face0;
+
+			vertices[index++] = face1;
+			vertices[index++] = face3;
+			vertices[index++] = face0;
+
+			start.x = start.x - offset;
+		}
+		start.y -= offset;
+	}
+
+
+	 for(int i = 0; i < divisions*divisions*6; i++) {
+		texCoords[i].x = 1.0;
+		texCoords[i].y = 0.0;
+	}
+
+	int numVertices = (sizeof(vertices)/sizeof(vertices[0]));
+    int numTexCoords = (sizeof(texCoords)/sizeof(texCoords[0]));
+	int vecSize = numVertices/3;
+	int texSize = numTexCoords/2;
+
+    vec3 vertArray[vecSize];
+    vec3 normArray[vecSize];
+    vec2 texArray[texSize];
+    *normArray = *generateNormals(normArray, vertices, numVertices);
+    vao = initBuffers(vertices, sizeof(vertices), normArray, sizeof(vertices), texCoords, sizeof(texCoords));
+    return vao;
+}
+
 GLuint initQuad() {
 	GLuint vao;
 	float vertices[] = {
@@ -852,7 +903,7 @@ void draw(GLuint vao, GLuint shader, int vertices, GLuint texture, GLuint normal
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D, normal);
 	glUniform1i(glGetUniformLocation(shader, "noiseTexture"), 2);
-	glDrawArrays(GL_TRIANGLES, 0, vertices);
+	glDrawArrays(GL_LINES, 0, vertices);
 	glBindVertexArray(0);
 	glEnable(GL_CULL_FACE);
 	//glCullFace(GL_BACK);
@@ -867,9 +918,9 @@ vec4 rotateLight(GLuint vao, GLuint shader, int vertices, GLuint texture, float 
 	vec4 camPosition = getCameraPosition(positionMatrix);
 
 	vec3 translation;
-	translation.x = (-400.0) * cos(theta/75.0);
+	translation.x = (-400.0);// * cos(theta/75.0);
 	translation.y = 0.0;
-	translation.z = (-400.0) * sin(theta/75.0);
+	translation.z = (-400.0);// * sin(theta/75.0);
 
 	mat4 model = multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(translation)), scale(15.0)),rotateX(90.0));
 	initMVP(shader, model, getViewMatrix());
@@ -1022,19 +1073,20 @@ int main(int argc, char *argv[])
 	GLuint noiseRenderShader = initNoiseShader();
 	GLuint instanceShader = initInstanceShader();
 
-	GLuint earthTex = loadTexture("shaders/earth.jpg", 0);
-	GLuint moonTex = loadTexture("shaders/moon.jpg", 0);
+	GLuint earthTex = loadTexture("assets/earth.jpg", 0);
+	GLuint moonTex = loadTexture("assets/moon.jpg", 0);
 	GLuint planetTex = loadTexture("assets/europa.jpg", 0);
 	GLuint planetNorm = loadTexture("assets/NormalMap.png", 0);
 	GLuint planetDisp = loadTexture("assets/DisplacementMap.png", 0);
 
-	GLuint ringTex = loadTexture("shaders/ring.png", 1);
+	GLuint ringTex = loadTexture("assets/ring.png", 1);
 	GLuint sphereVAO = initSphere();
 	GLuint ringVAO = initRing();
 	GLuint objectVAO = initObjectBuffer("assets/rifter.obj");
-	GLuint rockVAO = initRockBuffer("shaders/rock.obj");
-	GLuint rock2VAO = initRockBuffer("shaders/rock2.obj");
-	GLuint rock3VAO = initRockBuffer("shaders/rock3.obj");
+	GLuint rockVAO = initRockBuffer("assets/rock.obj");
+	GLuint rock2VAO = initRockBuffer("assets/rock2.obj");
+	GLuint rock3VAO = initRockBuffer("assets/rock3.obj");
+	GLuint subQuadVAO = initSubQuad();
 
 	GLuint quadCubeVAO = initQuadCube(30);
 
@@ -1163,31 +1215,39 @@ int main(int argc, char *argv[])
 
 		//draw(quadCubeVAO, ringShader, qc.vertexNumber, sunNoiseTexture, model, translation);
 		drawOrbit(quadCubeVAO, ringShader, qc.vertexNumber, moonTex, theta, model, translation);
-
+		//Planet ring
 		model = multiplymat4(multiplymat4(translatevec3(translation), rotateX(80.0)), scale(fScale*1.5));
 		draw(ringVAO, ringShader, planetRing.vertexNumber, ringTex, planetNorm, model, translation, lightPosition, lightSpaceMatrix);
+		//Planet
+		mat4 matR = multiplymat4(rotateY(theta/5.0), rotateX(45.0));
 		model = multiplymat4(translatevec3(translation), scale(fScale));
-		drawTess(quadCubeVAO, tessShader, qc.vertexNumber, textureColorBuffer, planetTex, planetNorm, planetDisp, model, translation, lightPosition, lightSpaceMatrix);
-		model = multiplymat4(translatevec3(translation), scale(fScale*1.01));
-		draw(quadCubeVAO, waterShader, qc.vertexNumber, planetTex, planetNorm, model, translation, lightPosition, lightSpaceMatrix);
-
-		model = multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(lightPositionXYZ)), scale(15.0)),rotateX(90.0));
+		mat4 m = multiplymat4(model,matR);
+		drawTess(quadCubeVAO, tessShader, qc.vertexNumber, textureColorBuffer, planetTex, planetNorm, planetDisp, m, translation, lightPosition, lightSpaceMatrix);
+		//Water
+		//model = multiplymat4(translatevec3(translation), scale(fScale*1.01));
+		//m = multiplymat4(model,matR);
+		//draw(quadCubeVAO, waterShader, qc.vertexNumber, planetTex, planetNorm, m, translation, lightPosition, lightSpaceMatrix);
+		//Sun
+		model = multiplymat4(multiplymat4(multiplymat4(positionMatrix, translatevec3(lightPositionXYZ)), scale(250.0)),rotateX(90.0));
 		draw(quadCubeVAO, ringShader, qc.vertexNumber, sunNoiseTexture, planetNorm, model, lightPositionXYZ, lightPosition, lightSpaceMatrix);
-
+		//FBO Visualizer
 		model = multiplymat4(translate(-75.0, 25.0, 0.0), scale(10.0));
 		draw(quadVAO, fboShader, 6, textureColorBuffer, planetNorm, model, translation, lightPosition, lightSpaceMatrix);
-
+		//Object
 		vec3 arcBallPos = getCamera();
 		float modelRotationAngle = 0.0;
-
 		model = multiplymat4(multiplymat4(translate(-arcBallPos.x, -arcBallPos.y, -arcBallPos.z), rotateX(modelRotationAngle)), scale(0.5));
 		draw(objectVAO, ringShader, ship.vertexNumber, earthTex, planetNorm, model, lightPositionXYZ, lightPosition, lightSpaceMatrix);
+
+		model = multiplymat4(translate(-100.0, 0.0, 0.0), scale(100.0));
+		draw(subQuadVAO, waterShader, 200*200*6, earthTex, planetNorm, model, lightPositionXYZ, lightPosition, lightSpaceMatrix);
 
 		glUseProgram(instanceShader);
 		drawInstanced(rockVAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos1, rotations, model, scaleArray, theta, lightPosition);
 		drawInstanced(rock2VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos2, rotations, model, scaleArray, theta, lightPosition);
 		drawInstanced(rock3VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos3, rotations, model, scaleArray, theta, lightPosition);
 
+		//Atmosphere
 		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
 		//draw(quadCubeVAO, ringShader, qc.vertexNumber, earthTex, atmo, translation, lightPosition, lightSpaceMatrix);
 		drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
