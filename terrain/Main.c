@@ -543,16 +543,8 @@ GLuint initSubQuad() {
 		texCoords[i].y = 0.0;
 	}
 
-	int numVertices = (sizeof(vertices)/sizeof(vertices[0]));
-    int numTexCoords = (sizeof(texCoords)/sizeof(texCoords[0]));
-	int vecSize = numVertices/3;
-	int texSize = numTexCoords/2;
-
-    vec3 vertArray[vecSize];
-    vec3 normArray[vecSize];
-    vec2 texArray[texSize];
-    *normArray = *generateNormals(normArray, vertices, numVertices);
-    vao = initBuffers(vertices, sizeof(vertices), normArray, sizeof(vertices), texCoords, sizeof(texCoords));
+    //*normArray = *generateNormals(normArray, vertices, numVertices);
+    vao = initBuffers(vertices, sizeof(vertices), vertices, sizeof(vertices), texCoords, sizeof(texCoords));
     return vao;
 }
 
@@ -1242,7 +1234,7 @@ int main(int argc, char *argv[])
 		model = multiplymat4(translate(-100.0, 0.0, 0.0), scale(100.0));
 		draw(subQuadVAO, waterShader, 200*200*6, earthTex, planetNorm, model, lightPositionXYZ, lightPosition, lightSpaceMatrix);
 
-		glUseProgram(instanceShader);
+		/*glUseProgram(instanceShader);
 		drawInstanced(rockVAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos1, rotations, model, scaleArray, theta, lightPosition);
 		drawInstanced(rock2VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos2, rotations, model, scaleArray, theta, lightPosition);
 		drawInstanced(rock3VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos3, rotations, model, scaleArray, theta, lightPosition);
@@ -1251,7 +1243,7 @@ int main(int argc, char *argv[])
 		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
 		//draw(quadCubeVAO, ringShader, qc.vertexNumber, earthTex, atmo, translation, lightPosition, lightSpaceMatrix);
 		drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
-
+		*/
 		glfwPollEvents();
 		glfwSwapBuffers(window);
 	}
