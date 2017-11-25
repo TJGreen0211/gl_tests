@@ -15,6 +15,11 @@ struct ring planetRing;
 struct quadCube qc, qc2;
 mat4 lightView;
 
+typedef struct complex {
+	float real;
+	float im;
+} complex;
+
 int perm[256]= {151,160,137,91,90,15,
   131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
   190, 6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
@@ -525,22 +530,28 @@ GLuint initSubQuad() {
 			vec3 face3 = {start.x-offset, start.y,   start.z};
 
 			vertices[index++] = face2;
+			texCoords[index-1].x = (face2.x+1.0)/2.0;
+			texCoords[index-1].y = (face2.y+1.0)/2.0;
 			vertices[index++] = face1;
+			texCoords[index-1].x = (face1.x+1.0)/2.0;
+			texCoords[index-1].y = (face1.y+1.0)/2.0;
 			vertices[index++] = face0;
+			texCoords[index-1].x = (face0.x+1.0)/2.0;
+			texCoords[index-1].y = (face0.y+1.0)/2.0;
 
 			vertices[index++] = face1;
+			texCoords[index-1].x = (face1.x+1.0)/2.0;
+			texCoords[index-1].y = (face1.y+1.0)/2.0;
 			vertices[index++] = face3;
+			texCoords[index-1].x = (face3.x+1.0)/2.0;
+			texCoords[index-1].y = (face3.y+1.0)/2.0;
 			vertices[index++] = face0;
+			texCoords[index-1].x = (face0.x+1.0)/2.0;
+			texCoords[index-1].y = (face0.y+1.0)/2.0;
 
 			start.x = start.x - offset;
 		}
 		start.y -= offset;
-	}
-
-
-	 for(int i = 0; i < divisions*divisions*6; i++) {
-		texCoords[i].x = 1.0;
-		texCoords[i].y = 0.0;
 	}
 
     //*normArray = *generateNormals(normArray, vertices, numVertices);
@@ -895,7 +906,7 @@ void draw(GLuint vao, GLuint shader, int vertices, GLuint texture, GLuint normal
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D, normal);
 	glUniform1i(glGetUniformLocation(shader, "noiseTexture"), 2);
-	glDrawArrays(GL_LINES, 0, vertices);
+	glDrawArrays(GL_TRIANGLES, 0, vertices);
 	glBindVertexArray(0);
 	glEnable(GL_CULL_FACE);
 	//glCullFace(GL_BACK);
@@ -1049,9 +1060,301 @@ int checkShaderChange(GLuint shader, char *vert, char *frag, time_t vertTime, ti
 	return 0;
 }
 
+complex complexMult(complex c0, complex c1) {
+	complex c;
+	c.real = c0.real * c1.real - c0.im * c1.im;
+	c.im = c0.real * c1.im + c0.im * c1.real;
+	return c;
+}
+
+complex complexAdd(complex c0, complex c1) {
+	complex c;
+	c.real = c0.real + c1.real;
+	c.im = c0.im + c1.im;
+	return c;
+}
+
+complex complexConj(complex c) {
+	complex cConj;
+	cConj.real = c.real;
+	cConj.im = -c.im;
+	return cConj;
+}
+
+vec4 gaussRand() {
+	float noise00 = (float)rand()/(float)(RAND_MAX);
+	float noise01 = (float)rand()/(float)(RAND_MAX);
+	float noise02 = (float)rand()/(float)(RAND_MAX);
+	float noise03 = (float)rand()/(float)(RAND_MAX);
+
+	float u0 = 2.0*M_PI*noise00;
+	float v0 = sqrt(-2.0 * logf(noise01));
+	float u1 = 2.0*M_PI*noise02;
+	float v1 = sqrt(-2.0 * logf(noise03));
+	vec4 grnd = {v0*cos(u0), v0 *sin(u0), v1*cos(u1), v1 * sin(u1)};
+	//printf("x: %f, y: %f, z: %f, w: %f\n", grnd.x, grnd.y, grnd.z, grnd.w);
+	//printf("x: %f, y: %f, z: %f, w: %f\n", noise00, noise01, noise02, noise03);
+	return grnd;
+}
+
+void twiddleIndices(int dim, float *pixels) {
+	int waveTexSize = dim;
+	float fWaveTexSize = (float)dim;
+	int log2n = log(waveTexSize)/log(2);
+
+	//float *pixels;
+	//pixels = malloc(dim*log2n*4*sizeof(float));
+
+	int index = 0;
+	for(float N = 0.0; N < log2n; N +=1.0) {
+		for(float M = 0.0; M < waveTexSize; M +=1.0) {
+			float k = fmod(M * (fWaveTexSize/pow(2.0,N+1.0)), fWaveTexSize);
+			//printf("k: %f\n", k);
+			complex twiddle = {cos(2.0*M_PI*k/fWaveTexSize), sin(2.0*M_PI*k/fWaveTexSize)};
+
+			int butterflySpan = (int)pow(2, N);
+ 			int butterflyWing;
+
+			if(fmod(M, pow(2,N+1)) < pow(2, N))
+				butterflyWing = 1;
+			else butterflyWing = 0;
+
+			//printf("N: %d\n", butterflyWing);
+			//printf("real: %f, im: %f\n", twiddle.real, twiddle.im);
+			if(N == 0.0) {
+				if(butterflyWing == 1) {
+					pixels[index++] = fabsf(twiddle.real);
+					pixels[index++] = fabsf(twiddle.im);
+					pixels[index++] = M;
+					pixels[index++] = M+1;
+				}
+				else {
+					pixels[index++] = fabsf(twiddle.real);
+					pixels[index++] = fabsf(twiddle.im);
+					pixels[index++] = M-1;
+					pixels[index++] = M;
+				}
+
+			}
+			else {
+				if(butterflyWing == 1) {
+					pixels[index++] = fabsf(twiddle.real);
+					pixels[index++] = fabsf(twiddle.im);
+					pixels[index++] = M;
+					pixels[index++] = M+butterflySpan;
+				}
+				else {
+					pixels[index++] = fabsf(twiddle.real);
+					pixels[index++] = fabsf(twiddle.im);
+					pixels[index++] = M-butterflySpan;
+					pixels[index++] = M;
+				}
+			}
+		}
+	}
+}
+
+float phillips(vec2 k) {
+	float A = 1.0;
+	float g = 9.81;
+	vec2 waveDir = {30.0, 0.0};
+
+	float k2 = k.x * k.x + k.y * k.y;
+	if(k2 < 0.0001) k2 = 0.0001;
+	float wV = lengthvec2(waveDir);
+	float L = (wV*wV)/g;
+	float dampingVal = 0.0001;
+	float omegaK = dotvec2(normalizevec2(waveDir),normalizevec2(k));
+	//vec2 test = normalizevec2(k);
+	//printf("omegaK: %f, wV: %f, L: %f\n", omegaK, wV, L);
+
+	//	         exp(-1/(kL)^2)
+	//P(k) = A * --------------- * |K . W|^2 * exp(-k^2*l^2)
+	//				 k^4
+	return A * (exp(-1.0/ (k2 * L * L))/(k2*k2)) * (omegaK*omegaK) * exp(-k2*L*L*dampingVal*dampingVal);
+}
+
+void calcH0(int dim, complex *dx, complex *dy, complex *dz) {
+	int waveTexSize = dim;
+
+	float L = 2000.0;
+	int offset = 0;
+	for(float N = 0.0; N < waveTexSize; N +=1.0) {
+		for(float M = 0.0; M < waveTexSize; M +=1.0) {
+			vec2 k = {2.0*M_PI*N/L, 2.0*M_PI*M/L};
+
+			float magnitude = lengthvec2(k);
+			if(magnitude < 0.0001) magnitude = 0.0001;
+			float w = sqrt(9.81* magnitude);
+
+			vec4 grnd = gaussRand();
+			float h0 = 1/sqrt(2.0) * sqrt(phillips(k));
+			vec2 kNegative = {-k.x, -k.y};
+			float h0Conj = 1/sqrt(2.0) * sqrt(phillips(kNegative));
+
+			complex tildeh0k = {grnd.x*h0, grnd.y*h0};
+			complex conjTildeh0MK = {grnd.z*h0Conj, grnd.w*h0Conj};
+			conjTildeh0MK = complexConj(conjTildeh0MK);
+
+			//printf("~h0k: %f, %f ~conjH0k: %f, %f\n", tildeh0k.real, tildeh0k.im, conjTildeh0MK.real, conjTildeh0MK.im);
+
+			//float cosinus = cos(w*glfwGetTime()/1000.0);
+			//float sinus = sin(w*glfwGetTime()/1000.0);
+
+			float cosinus = cos(w);
+			float sinus = sin(w);
+
+			complex expIWT = {cosinus, sinus};
+			complex invExpIWT = {cosinus, -sinus};
+
+			dy[offset] = complexAdd(complexMult(tildeh0k, expIWT), complexMult(conjTildeh0MK, invExpIWT));
+			dx[offset].real = 0.0; dx[offset].im = -k.y/magnitude;//dx[offset] = {0.0, -k.y/magnitude};
+			dx[offset] = complexMult(dx[offset], dy[offset]);
+			dz[offset].real = 0.0; dz[offset].im = -k.y/magnitude;//= {0.0, -k.y/magnitude};
+			dz[offset] = complexMult(dz[offset], dy[offset]);
+
+			//printf("[%f][%f] P(k): %f, P(-k): %f\n", N, M, phillips(k), phillips(kNegative));
+			//printf("gauss.x: %f, gauss.y %f\n", grnd.x, grnd.y);
+			//printf("dx: %f %f, dy: %f %f, dz: %f %f\n", dx.real, dx.im, dy.real, dy.im, dz.real, dz.im);
+			offset++;
+		}
+	}
+}
+
+void horizontalButterfly(int dim, vec4 *twiddleIndices, vec4 *pingpong0, vec4 *pingpong1) {
+	int log2n = log(dim)/log(2);
+	int pingpong = 0;
+
+	//* * * * [0][] 4
+	//* * * * [1][] 8
+	//* * * * [2][] 12
+	//* * * * [3][] 16
+
+	//Horizontal
+	for(int i = 0; i < log2n; i++) {
+		for(int N = 0; N < dim; N++){
+			for(int M = 0; M < dim; M++){
+				if(pingpong == 0) {
+					vec4 data = twiddleIndices[(i+1)*(N+1)-1];
+					vec2 pointP = {pingpong0[((int)data.z+1)*(M+1)-1].x, pingpong0[((int)data.z+1)*(M+1)-1].y};
+					vec2 pointQ = {pingpong0[((int)data.w+1)*(M+1)-1].x, pingpong0[((int)data.w+1)*(M+1)-1].y};
+					vec2 pointW = {data.x, data.y};
+
+					complex p = {pointP.x, pointP.y};
+					complex q = {pointQ.x, pointQ.y};
+					complex w = {pointW.x, pointW.y};
+
+					complex H = complexAdd(p, complexMult(w, q));
+
+					pingpong1[(N+1)*(M+1)-1].x = H.real;
+					pingpong1[(N+1)*(M+1)-1].y = H.im;
+					pingpong1[(N+1)*(M+1)-1].z = 0.0;
+					pingpong1[(N+1)*(M+1)-1].w = 1.0;
+					//printf("pingpong0 x: %d, y: %d, global: %d\n", ((int)data.z+1), (M+1), ((int)data.z+1)*(M+1)-1);
+					//printf("pingpong1 x: %d, y: %d, global: %d\n", (N+1), (M+1), (N+1)*(M+1)-1);
+					//printf("data: %d pingpong: %d, texture1: %f, %f\n", (i+1)*(N+1)-1, pingpong, pingpong1[(N+1)*(M+1)-1].x, pingpong1[(N+1)*(M+1)-1].y);
+				}
+				else if(pingpong == 1) {
+					vec4 data = twiddleIndices[(i+1)*(N+1)-1];
+					vec2 pointP = {pingpong1[((int)data.z+1)*(M+1)-1].x, pingpong1[((int)data.z+1)*(M+1)-1].y};
+					vec2 pointQ = {pingpong1[((int)data.w+1)*(M+1)-1].x, pingpong1[((int)data.w+1)*(M+1)-1].y};
+					vec2 pointW = {data.x, data.y};
+
+					complex p = {pointP.x, pointP.y};
+					complex q = {pointQ.x, pointQ.y};
+					complex w = {pointW.x, pointW.y};
+
+					complex H = complexAdd(p, complexMult(w, q));
+
+					pingpong0[(N+1)*(M+1)-1].x = H.real;
+					pingpong0[(N+1)*(M+1)-1].y = H.im;
+					pingpong0[(N+1)*(M+1)-1].z = 0.0;
+					pingpong0[(N+1)*(M+1)-1].w = 1.0;
+					//printf("pingpong1 x: %d, y: %d, global: %d\n", ((int)data.z+1), (M+1), ((int)data.z+1)*(M+1)-1);
+					//printf("pingpong0 x: %d, y: %d, global: %d\n", (N+1), (M+1), (N+1)*(M+1)-1);
+					//printf("data: %d pingpong: %d, texture0: %f, %f\n", (i+1)*(N+1)-1, pingpong, pingpong0[(N+1)*(M+1)-1].x, pingpong0[(N+1)*(M+1)-1].y);
+				}
+			}
+		}
+		pingpong++;
+		pingpong = pingpong%2;
+	}
+
+	//Vertical
+	/*for(i = 0; i < log2n; i++) {
+		pingpong++;
+		pingpong = pingpong%2;
+	}*/
+
+}
+
+GLuint genWaveTex() {
+	GLuint textureID;
+	glGenTextures(1, &textureID);
+	glBindTexture(GL_TEXTURE_2D, textureID);
+	int dimension = 256;
+	float *h0Tex = malloc(dimension*dimension*4*sizeof(float));
+
+	complex *dx = malloc(dimension*dimension*sizeof(complex));
+	complex *dy = malloc(dimension*dimension*sizeof(complex));
+	complex *dz = malloc(dimension*dimension*sizeof(complex));
+
+	int log2n = log(dimension)/log(2);
+	float *tw = malloc(dimension*log2n*4*sizeof(float));
+	twiddleIndices(dimension, tw);
+
+	calcH0(dimension, dx, dy, dz);
+
+	int c = 0;
+	for(int i = 0; i < dimension*dimension; i++) {
+		h0Tex[c++] = dx[i].real;
+		h0Tex[c++] = dx[i].im;
+		h0Tex[c++] = 0.0;
+		h0Tex[c++] = 1.0;
+	}
+
+	vec4 pingpong0[dimension*dimension];
+	vec4 pingpong1[dimension*dimension];
+	for(int i = 0; i < dimension*dimension; i++) {
+		pingpong0[i].x = dx[i].real;
+		pingpong0[i].y = dx[i].im;
+		pingpong0[i].z = 0.0;
+		pingpong0[i].w = 1.0;
+	}
+
+	vec4 vTWI[dimension*log2n];
+	c = 0;
+	for(int i = 0; i < dimension*dimension; i++) {
+		vTWI[i].x = tw[c++];
+		vTWI[i].y = tw[c++];
+		vTWI[i].z = tw[c++];
+		vTWI[i].w = tw[c++];
+	}
+
+	horizontalButterfly(dimension, vTWI, pingpong0, pingpong1);
+
+	vec4 displacement[dimension*dimension];
+	for(int i = 0; i < dimension*dimension; i++) {
+		float h = pingpong0[i].x;
+		displacement[i].x = h; displacement[i].y = h; displacement[i].z = h; displacement[i].w = 0.0;
+		displacement[i] = normalizevec4(displacement[i]);
+		displacement[i].w = 1.0;
+
+	}
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dimension, dimension, 0, GL_RGBA, GL_FLOAT, displacement);
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+	return textureID;
+}
+
 int main(int argc, char *argv[])
 {
 	float theta = 0.0;
+	printf("\tWorkdir: %s\n", getenv("PWD"));
 	chdir("/Users/tjgreen/Documents/OpenGL/gl_tests/terrain");
 	GLFWwindow *window = setupGLFW();
 
@@ -1132,6 +1435,8 @@ int main(int argc, char *argv[])
 	time_t vertTime = getFileLastChangeTime(vertCheck);
 	time_t fragTime = getFileLastChangeTime(fragCheck);
 
+	GLuint seaTex = genWaveTex();
+
 	while(!glfwWindowShouldClose(window))
 	{
 		if(checkShaderChange(tessShader, vertCheck, fragCheck, vertTime, fragTime)) {
@@ -1162,7 +1467,6 @@ int main(int argc, char *argv[])
 		float fScaleFactor = 1.25;//1.025;
 
 		//int terrainMaxLOD = (int)(log(fScale)/log(2));
-		//printf("%f, %f, %f\n", lightPosition.x, lightPosition.y, lightPosition.z);
 
 		//glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 		//glClearColor(1.0, 1.0, 1.0, 1.0);
@@ -1231,19 +1535,20 @@ int main(int argc, char *argv[])
 		model = multiplymat4(multiplymat4(translate(-arcBallPos.x, -arcBallPos.y, -arcBallPos.z), rotateX(modelRotationAngle)), scale(0.5));
 		draw(objectVAO, ringShader, ship.vertexNumber, earthTex, planetNorm, model, lightPositionXYZ, lightPosition, lightSpaceMatrix);
 
+		//Flat quad
 		model = multiplymat4(translate(-100.0, 0.0, 0.0), scale(100.0));
-		draw(subQuadVAO, waterShader, 200*200*6, earthTex, planetNorm, model, lightPositionXYZ, lightPosition, lightSpaceMatrix);
+		draw(subQuadVAO, waterShader, 200*200*6, seaTex, planetNorm, model, lightPositionXYZ, lightPosition, lightSpaceMatrix);
 
-		/*glUseProgram(instanceShader);
-		drawInstanced(rockVAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos1, rotations, model, scaleArray, theta, lightPosition);
-		drawInstanced(rock2VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos2, rotations, model, scaleArray, theta, lightPosition);
-		drawInstanced(rock3VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos3, rotations, model, scaleArray, theta, lightPosition);
+		//glUseProgram(instanceShader);
+		//drawInstanced(rockVAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos1, rotations, model, scaleArray, theta, lightPosition);
+		//drawInstanced(rock2VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos2, rotations, model, scaleArray, theta, lightPosition);
+		//drawInstanced(rock3VAO, positionsVBO, instanceShader, object.vertexNumber, instancedDraws, pos3, rotations, model, scaleArray, theta, lightPosition);
 
 		//Atmosphere
-		atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
+		//atmo = multiplymat4(translatevec3(translation), scale(fScale*fScaleFactor));
 		//draw(quadCubeVAO, ringShader, qc.vertexNumber, earthTex, atmo, translation, lightPosition, lightSpaceMatrix);
-		drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
-		*/
+		//drawAtmosphere(sphereVAO, atmosphereShader, skyShader, planet.vertexNumber, atmo, translation, fScale, fScaleFactor, lightPosition);
+
 		glfwPollEvents();
 		glfwSwapBuffers(window);
 	}
