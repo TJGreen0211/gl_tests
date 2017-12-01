@@ -5,6 +5,7 @@
 #include <math.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <pthread.h>
 
 float zNear = 0.5, zFar = 100000.0;
 int mousePosX, mousePosY, actionPress, keys, mouseZoomOffset;
@@ -1097,16 +1098,13 @@ vec4 gaussRand() {
 	return grnd;
 }
 
-void twiddleIndices(int dim, float *pixels) {
+void twiddleIndices(int dim, vec4 *pixels) {
 	int waveTexSize = dim;
 	float fWaveTexSize = (float)dim;
 	int log2n = log(waveTexSize)/log(2);
 
-	//float *pixels;
-	//pixels = malloc(dim*log2n*4*sizeof(float));
-
 	int index = 0;
-	for(float N = 0.0; N < log2n; N +=1.0) {
+	for(float N = 0.0; N < log2n; N += 1.0) {
 		for(float M = 0.0; M < waveTexSize; M +=1.0) {
 			float k = fmod(M * (fWaveTexSize/pow(2.0,N+1.0)), fWaveTexSize);
 			//printf("k: %f\n", k);
@@ -1118,38 +1116,45 @@ void twiddleIndices(int dim, float *pixels) {
 			if(fmod(M, pow(2,N+1)) < pow(2, N))
 				butterflyWing = 1;
 			else butterflyWing = 0;
+			//printf("%d:%d butterflyWing: %f, %f\n", (int)N, (int)M, fmod(M, pow(2,N+1)), pow(2, N));
+			//printf("%d:%d k: %f\n", (int)N, (int)M, k);
 
 			//printf("N: %d\n", butterflyWing);
 			//printf("real: %f, im: %f\n", twiddle.real, twiddle.im);
 			if(N == 0.0) {
 				if(butterflyWing == 1) {
-					pixels[index++] = fabsf(twiddle.real);
-					pixels[index++] = fabsf(twiddle.im);
-					pixels[index++] = M;
-					pixels[index++] = M+1;
+					pixels[index].x = fabsf(twiddle.real);
+					pixels[index].y = fabsf(twiddle.im);
+					pixels[index].z = M;
+					pixels[index].w = M+1;
+					index++;
 				}
 				else {
-					pixels[index++] = fabsf(twiddle.real);
-					pixels[index++] = fabsf(twiddle.im);
-					pixels[index++] = M-1;
-					pixels[index++] = M;
+					pixels[index].x = fabsf(twiddle.real);
+					pixels[index].y = fabsf(twiddle.im);
+					pixels[index].z = M-1;
+					pixels[index].w = M;
+					index++;
 				}
 
 			}
 			else {
 				if(butterflyWing == 1) {
-					pixels[index++] = fabsf(twiddle.real);
-					pixels[index++] = fabsf(twiddle.im);
-					pixels[index++] = M;
-					pixels[index++] = M+butterflySpan;
+					pixels[index].x = fabsf(twiddle.real);
+					pixels[index].y = fabsf(twiddle.im);
+					pixels[index].z = M;
+					pixels[index].w = M+butterflySpan;
+					index++;
 				}
 				else {
-					pixels[index++] = fabsf(twiddle.real);
-					pixels[index++] = fabsf(twiddle.im);
-					pixels[index++] = M-butterflySpan;
-					pixels[index++] = M;
+					pixels[index].x = fabsf(twiddle.real);
+					pixels[index].y = fabsf(twiddle.im);
+					pixels[index].z = M-butterflySpan;
+					pixels[index].w = M;
+					index++;
 				}
 			}
+			//printf("%d, %d\n", (int)pixels[index-1].z, (int)pixels[index-1].w);
 		}
 	}
 }
@@ -1174,7 +1179,27 @@ float phillips(vec2 k) {
 	return A * (exp(-1.0/ (k2 * L * L))/(k2*k2)) * (omegaK*omegaK) * exp(-k2*L*L*dampingVal*dampingVal);
 }
 
-void calcH0(int dim, complex *dx, complex *dy, complex *dz) {
+void initH0(int dim, complex *tildeh0k, complex *conjTildeh0MK) {
+	int waveTexSize = dim;
+	float L = 2000.0;
+	int offset = 0;
+	for(float N = 0.0; N < waveTexSize; N +=1.0) {
+		for(float M = 0.0; M < waveTexSize; M +=1.0) {
+			vec2 k = {2.0*M_PI*N/L, 2.0*M_PI*M/L};
+
+			vec4 grnd = gaussRand();
+			float h0 = 1/sqrt(2.0) * sqrt(phillips(k));
+			vec2 kNegative = {-k.x, -k.y};
+			float h0Conj = 1/sqrt(2.0) * sqrt(phillips(kNegative));
+			tildeh0k[offset].real = grnd.x*h0; tildeh0k[offset].im = grnd.y*h0;
+			conjTildeh0MK[offset].real = grnd.z*h0Conj; conjTildeh0MK[offset].im = grnd.w*h0Conj;
+			conjTildeh0MK[offset] = complexConj(conjTildeh0MK[offset]);
+			offset++;
+		}
+	}
+}
+
+void calcH0(int dim, complex *dx, complex *dy, complex *dz, complex *tildeh0k, complex * conjTildeh0MK) {
 	int waveTexSize = dim;
 
 	float L = 2000.0;
@@ -1187,27 +1212,17 @@ void calcH0(int dim, complex *dx, complex *dy, complex *dz) {
 			if(magnitude < 0.0001) magnitude = 0.0001;
 			float w = sqrt(9.81* magnitude);
 
-			vec4 grnd = gaussRand();
-			float h0 = 1/sqrt(2.0) * sqrt(phillips(k));
-			vec2 kNegative = {-k.x, -k.y};
-			float h0Conj = 1/sqrt(2.0) * sqrt(phillips(kNegative));
+			float cosinus = cos(w+glfwGetTime());
+			float sinus = sin(w+glfwGetTime());
 
-			complex tildeh0k = {grnd.x*h0, grnd.y*h0};
-			complex conjTildeh0MK = {grnd.z*h0Conj, grnd.w*h0Conj};
-			conjTildeh0MK = complexConj(conjTildeh0MK);
-
-			//printf("~h0k: %f, %f ~conjH0k: %f, %f\n", tildeh0k.real, tildeh0k.im, conjTildeh0MK.real, conjTildeh0MK.im);
-
-			//float cosinus = cos(w*glfwGetTime()/1000.0);
-			//float sinus = sin(w*glfwGetTime()/1000.0);
-
-			float cosinus = cos(w);
-			float sinus = sin(w);
+			//float cosinus = cos(w);
+			//float sinus = sin(w);
 
 			complex expIWT = {cosinus, sinus};
 			complex invExpIWT = {cosinus, -sinus};
 
-			dy[offset] = complexAdd(complexMult(tildeh0k, expIWT), complexMult(conjTildeh0MK, invExpIWT));
+			dy[offset] = complexAdd(complexMult(tildeh0k[offset], expIWT), complexMult(conjTildeh0MK[offset], invExpIWT));
+			//printf("%d r: %f i: %f\n", offset, tildeh0k[offset].real, tildeh0k[offset].im);
 			dx[offset].real = 0.0; dx[offset].im = -k.y/magnitude;//dx[offset] = {0.0, -k.y/magnitude};
 			dx[offset] = complexMult(dx[offset], dy[offset]);
 			dz[offset].real = 0.0; dz[offset].im = -k.y/magnitude;//= {0.0, -k.y/magnitude};
@@ -1221,28 +1236,30 @@ void calcH0(int dim, complex *dx, complex *dy, complex *dz) {
 	}
 }
 
+/*
 void horizontalButterfly(int dim, vec4 *twiddleIndices, vec4 *pingpong0, vec4 *pingpong1) {
 	int log2n = log(dim)/log(2);
 	int pingpong = 0;
+	int index = 0;
+	for(int l = 0; l < log2n; l++) {
+		for(int i = 0; i < dim; i++) {
+			vec4 data = twiddleIndices[index++];
+			//printf("d0 z:%d, w:%d\n", (int)data.z, (int)data.w);
+		}
+		pingpong++;
+		pingpong = pingpong%2;
+	}
 
-	//* * * * [0][] 4
-	//* * * * [1][] 8
-	//* * * * [2][] 12
-	//* * * * [3][] 16
-
-	//Horizontal
+	pingpong = 0;
 	for(int i = 0; i < log2n; i++) {
 		for(int N = 0; N < dim; N++){
 			for(int M = 0; M < dim; M++){
 				if(pingpong == 0) {
 					vec4 data = twiddleIndices[(i+1)*(N+1)-1];
-					vec2 pointP = {pingpong0[((int)data.z+1)*(M+1)-1].x, pingpong0[((int)data.z+1)*(M+1)-1].y};
-					vec2 pointQ = {pingpong0[((int)data.w+1)*(M+1)-1].x, pingpong0[((int)data.w+1)*(M+1)-1].y};
-					vec2 pointW = {data.x, data.y};
 
-					complex p = {pointP.x, pointP.y};
-					complex q = {pointQ.x, pointQ.y};
-					complex w = {pointW.x, pointW.y};
+					complex p = {pingpong0[((int)data.z+1)*(M+1)-1].x, pingpong0[((int)data.z+1)*(M+1)-1].y};
+					complex q = {pingpong0[((int)data.w+1)*(M+1)-1].x, pingpong0[((int)data.w+1)*(M+1)-1].y};
+					complex w = {data.x, data.y};
 
 					complex H = complexAdd(p, complexMult(w, q));
 
@@ -1250,19 +1267,17 @@ void horizontalButterfly(int dim, vec4 *twiddleIndices, vec4 *pingpong0, vec4 *p
 					pingpong1[(N+1)*(M+1)-1].y = H.im;
 					pingpong1[(N+1)*(M+1)-1].z = 0.0;
 					pingpong1[(N+1)*(M+1)-1].w = 1.0;
-					//printf("pingpong0 x: %d, y: %d, global: %d\n", ((int)data.z+1), (M+1), ((int)data.z+1)*(M+1)-1);
-					//printf("pingpong1 x: %d, y: %d, global: %d\n", (N+1), (M+1), (N+1)*(M+1)-1);
+					//printf("d0 x:%d, y:%d, z:%d, w:%d\n", (int)data.x, (int)data.y, (int)data.z, (int)data.w);
+					//printf("1 pingpong0 x: %d, y: %d, global: %d\n", ((int)data.z+1), (M+1), ((int)data.z+1)*(M+1)-1);
+					//printf("1 pingpong1 x: %d, y: %d, global: %d\n", (N+1), (M+1), (N+1)*(M+1)-1);
 					//printf("data: %d pingpong: %d, texture1: %f, %f\n", (i+1)*(N+1)-1, pingpong, pingpong1[(N+1)*(M+1)-1].x, pingpong1[(N+1)*(M+1)-1].y);
 				}
 				else if(pingpong == 1) {
 					vec4 data = twiddleIndices[(i+1)*(N+1)-1];
-					vec2 pointP = {pingpong1[((int)data.z+1)*(M+1)-1].x, pingpong1[((int)data.z+1)*(M+1)-1].y};
-					vec2 pointQ = {pingpong1[((int)data.w+1)*(M+1)-1].x, pingpong1[((int)data.w+1)*(M+1)-1].y};
-					vec2 pointW = {data.x, data.y};
 
-					complex p = {pointP.x, pointP.y};
-					complex q = {pointQ.x, pointQ.y};
-					complex w = {pointW.x, pointW.y};
+					complex p = {pingpong1[((int)data.z+1)*(M+1)-1].x, pingpong1[((int)data.z+1)*(M+1)-1].y};
+					complex q = {pingpong1[((int)data.w+1)*(M+1)-1].x, pingpong1[((int)data.w+1)*(M+1)-1].y};
+					complex w = {data.x, data.y};
 
 					complex H = complexAdd(p, complexMult(w, q));
 
@@ -1270,8 +1285,9 @@ void horizontalButterfly(int dim, vec4 *twiddleIndices, vec4 *pingpong0, vec4 *p
 					pingpong0[(N+1)*(M+1)-1].y = H.im;
 					pingpong0[(N+1)*(M+1)-1].z = 0.0;
 					pingpong0[(N+1)*(M+1)-1].w = 1.0;
-					//printf("pingpong1 x: %d, y: %d, global: %d\n", ((int)data.z+1), (M+1), ((int)data.z+1)*(M+1)-1);
-					//printf("pingpong0 x: %d, y: %d, global: %d\n", (N+1), (M+1), (N+1)*(M+1)-1);
+					//printf("d1 x:%d, y:%d, z:%d, w:%d\n", (int)data.x, (int)data.y, (int)data.z, (int)data.w);
+					//printf("0 pingpong1 x: %d, y: %d, global: %d\n", ((int)data.z+1), (M+1), ((int)data.z+1)*(M+1)-1);
+					//printf("0 pingpong0 x: %d, y: %d, global: %d\n", (N+1), (M+1), (N+1)*(M+1)-1);
 					//printf("data: %d pingpong: %d, texture0: %f, %f\n", (i+1)*(N+1)-1, pingpong, pingpong0[(N+1)*(M+1)-1].x, pingpong0[(N+1)*(M+1)-1].y);
 				}
 			}
@@ -1280,66 +1296,126 @@ void horizontalButterfly(int dim, vec4 *twiddleIndices, vec4 *pingpong0, vec4 *p
 		pingpong = pingpong%2;
 	}
 
-	//Vertical
-	/*for(i = 0; i < log2n; i++) {
-		pingpong++;
-		pingpong = pingpong%2;
-	}*/
+}*/
 
+void complexBitReverse(complex *c, int dim) {
+	for(unsigned int i = 0, j = 0; i < dim; i++) {
+		if(i < j) {
+			complex tmp = {c[i].real, c[i].im};
+			c[i].real = c[j].real;
+			c[i].im = c[j].im;
+			c[j].real = tmp.real;
+			c[j].im = tmp.im;
+		}
+
+		unsigned bit = ~i & (i+1);
+		unsigned rev = (dim / 2) / bit;
+		j ^= (dim-1) & ~(rev-1);
+	}
 }
 
-GLuint genWaveTex() {
+void fft(int dim, complex *c) {
+	complexBitReverse(c, dim);
+	int log2n = log(dim)/log(2);
+
+	float c1 = -1.0;
+	float c2 = 0.0;
+	long l2 = 1;
+	long i1;
+	for(int l = 0; l < log2n; l++) {
+		long l1 = l2;
+		l2 <<= 1;
+		float u1 = 1.0;
+		float u2 = 0.0;
+		for(int j = 0; j < l1; j++) {
+			for(int i = j; i < dim; i+=l2) {
+				i1 = i + l1;
+				complex temp = {u1 * c[i1].real - u2 * c[i1].im, u1 * c[i1].im + u2 * c[i1].real};
+				c[i1].real = c[i].real - temp.real;
+            	c[i1].im = c[i].im - temp.im;
+            	c[i].real += temp.real;
+            	c[i].im += temp.im;
+			}
+			float z = u1 * c1 - u2 * c2;
+			u2 = u1 * c2 + u2 * c1;
+			u1 = z;
+		}
+		c2 = sqrt((1.0 - c1) / 2.0);
+		c2 = -c2;
+		c1 = sqrt((1.0 + c1) / 2.0);
+	}
+}
+
+void fft2d(int dim, complex *c) {
+	complex *row = malloc(dim*2*sizeof(float));
+	int index = 0;
+	int cpIndex = 0;
+	for(int j = 0; j < dim; j++) {
+		for(int i = 0; i < dim; i++) {
+			row[i].real = c[index].real;
+			row[i].im = c[index].im;
+			//printf("in: %d, real: %f, im: %f\n", index, row[i].real, row[i].im);
+			//printf("0in: %d, %f+%fj\n", i, row[i].real, row[i].im);
+			index++;
+		}
+		fft(dim, row);
+		for(int i = 0; i < dim; i++) {
+			c[cpIndex].real = row[i].real;
+			c[cpIndex].im = row[i].im;
+			//printf("out: %d, real: %f, im: %f\n", cpIndex, c[cpIndex].real, c[cpIndex].im);
+			//printf("0out: %d, %f+%fj\n", cpIndex, c[cpIndex].real, c[cpIndex].im);
+			cpIndex++;
+		}
+	}
+
+	index = 0;
+	for(int i = 0; i < dim; i++) {
+		for(int j = 0; j < dim; j++) {
+			row[j].real = c[dim*j+i].real;
+			row[j].im = c[dim*j+i].im;
+			//printf("in: %d, real: %f, im: %f\n", dim*j+index, row[j].real, row[j].im);
+			//printf("1in: %d, %f+%fj\n", j, row[j].real, row[j].im);
+		}
+
+		fft(dim, row);
+		for(int j = 0; j < dim; j++) {
+			c[dim*j+i].real = row[j].real;
+			c[dim*j+i].im = row[j].im;
+			//printf("in: %d, real: %f, im: %f\n", dim*j+i, row[j].real, row[j].im);
+			//printf("1out: %d, %f+%fj\n", j, c[(i+1)*(j+1)-1].real, c[(i+1)*(j+1)-1].im);
+		}
+	}
+	free(row);
+}
+
+void swap(unsigned int forward, unsigned int rev, complex *c) {
+	float temp;
+	temp = c[forward].real;
+	c[forward].real = c[rev].real;
+	printf("temp: %f, c[forward]: %f, c[rev]: %f\n", temp, c[forward].real, c[rev].real);
+	c[rev].real = temp;
+
+	temp = c[forward].im;
+	c[forward].im = c[rev].im;
+	c[rev].im = temp;
+}
+
+GLuint genWaveTex(int dimension, vec4 *tw, complex *tildeh0k, complex *conjTildeh0MK, complex *dx, complex *dy, complex *dz) {
 	GLuint textureID;
 	glGenTextures(1, &textureID);
 	glBindTexture(GL_TEXTURE_2D, textureID);
-	int dimension = 256;
-	float *h0Tex = malloc(dimension*dimension*4*sizeof(float));
+	float *displacement = malloc(dimension*dimension*4*sizeof(float));
 
-	complex *dx = malloc(dimension*dimension*sizeof(complex));
-	complex *dy = malloc(dimension*dimension*sizeof(complex));
-	complex *dz = malloc(dimension*dimension*sizeof(complex));
-
-	int log2n = log(dimension)/log(2);
-	float *tw = malloc(dimension*log2n*4*sizeof(float));
-	twiddleIndices(dimension, tw);
-
-	calcH0(dimension, dx, dy, dz);
-
-	int c = 0;
+	calcH0(dimension, dx, dy, dz, tildeh0k, conjTildeh0MK);
+	fft2d(dimension, dy);
+	int index = 0;
 	for(int i = 0; i < dimension*dimension; i++) {
-		h0Tex[c++] = dx[i].real;
-		h0Tex[c++] = dx[i].im;
-		h0Tex[c++] = 0.0;
-		h0Tex[c++] = 1.0;
-	}
-
-	vec4 pingpong0[dimension*dimension];
-	vec4 pingpong1[dimension*dimension];
-	for(int i = 0; i < dimension*dimension; i++) {
-		pingpong0[i].x = dx[i].real;
-		pingpong0[i].y = dx[i].im;
-		pingpong0[i].z = 0.0;
-		pingpong0[i].w = 1.0;
-	}
-
-	vec4 vTWI[dimension*log2n];
-	c = 0;
-	for(int i = 0; i < dimension*dimension; i++) {
-		vTWI[i].x = tw[c++];
-		vTWI[i].y = tw[c++];
-		vTWI[i].z = tw[c++];
-		vTWI[i].w = tw[c++];
-	}
-
-	horizontalButterfly(dimension, vTWI, pingpong0, pingpong1);
-
-	vec4 displacement[dimension*dimension];
-	for(int i = 0; i < dimension*dimension; i++) {
-		float h = pingpong0[i].x;
-		displacement[i].x = h; displacement[i].y = h; displacement[i].z = h; displacement[i].w = 0.0;
-		displacement[i] = normalizevec4(displacement[i]);
-		displacement[i].w = 1.0;
-
+		//float h = fabsf(dy[i].real/(dimension*dimension));
+		float h = dy[i].real/(dimension*dimension);
+		displacement[index++] = h;
+		displacement[index++] = h;
+		displacement[index++] = h;
+		displacement[index++] = 1.0;
 	}
 
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dimension, dimension, 0, GL_RGBA, GL_FLOAT, displacement);
@@ -1348,8 +1424,18 @@ GLuint genWaveTex() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
+	free(displacement);
 	return textureID;
 }
+
+/*void *testThread(void *dx) {
+	complex *t_dx = (complex*)dx;
+	for(int i = 0; i < 100; i++) {
+		printf("%f, %f\n", t_dx->real, t_dx->im);
+	}
+	free(dx);
+	return NULL;
+}*/
 
 int main(int argc, char *argv[])
 {
@@ -1357,6 +1443,29 @@ int main(int argc, char *argv[])
 	printf("\tWorkdir: %s\n", getenv("PWD"));
 	chdir("/Users/tjgreen/Documents/OpenGL/gl_tests/terrain");
 	GLFWwindow *window = setupGLFW();
+
+	int dim = 256;
+	complex *tildeh0k = malloc(dim*dim*sizeof(complex));
+	complex *conjTildeh0MK = malloc(dim*dim*sizeof(complex));
+	initH0(dim, tildeh0k, conjTildeh0MK);
+
+	vec4 *tw = malloc(dim*(log(dim)/log(2))*4*sizeof(float));
+	twiddleIndices(dim, tw);
+
+	complex *dx = malloc(dim*dim*sizeof(complex));
+	complex *dy = malloc(dim*dim*sizeof(complex));
+	complex *dz = malloc(dim*dim*sizeof(complex));
+
+	/*pthread_t waveThread;
+	if(pthread_create(&waveThread, NULL, testThread, tildeh0k)) {
+		fprintf(stderr, "Error creating thread\n");
+		return 1;
+	}
+	if(pthread_join(waveThread, NULL)) {
+		fprintf(stderr, "Error joining thread\n");
+		return 2;
+	}*/
+
 
 	GLuint tessShader = initTessShader();
 	GLuint skyShader = initSkyShader();
@@ -1435,7 +1544,7 @@ int main(int argc, char *argv[])
 	time_t vertTime = getFileLastChangeTime(vertCheck);
 	time_t fragTime = getFileLastChangeTime(fragCheck);
 
-	GLuint seaTex = genWaveTex();
+
 
 	while(!glfwWindowShouldClose(window))
 	{
@@ -1444,6 +1553,14 @@ int main(int argc, char *argv[])
 			vertTime = getFileLastChangeTime(vertCheck);
 			fragTime = getFileLastChangeTime(fragCheck);
 		}
+
+		clock_t start,end;
+		float time_spent;
+		start=clock();
+		GLuint seaTex = genWaveTex(dim, tw, tildeh0k, conjTildeh0MK, dx, dy, dz);
+		end=clock();
+		time_spent=(((float)end - (float)start) / 1000000.0F );
+		//printf("\nSystem time is at %f\n seconds", time_spent);
 
 		//printf("%ld\n", (long)changeDate);
 
