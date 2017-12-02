@@ -20,6 +20,8 @@
 #include "Obj.h"
 #include "QuadCube.h"
 #include "Water.h"
+#include "Common.h"
+#include "Textures.h"
 
 #define BUFFER_OFFSET(offset) ((char*)NULL+(offset))
 
