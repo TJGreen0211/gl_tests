@@ -1,0 +1,77 @@
+K 25
+svn:wc:ra_dav:version-url
+V 37
+/svn/!svn/ver/53/trunk/assets/MatDefs
+END
+GroundFromSpace.j3md
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/53/trunk/assets/MatDefs/GroundFromSpace.j3md
+END
+GroundFromSpace.frag
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/53/trunk/assets/MatDefs/GroundFromSpace.frag
+END
+GroundFromSpace.vert
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/53/trunk/assets/MatDefs/GroundFromSpace.vert
+END
+SkyFromAtmosphere.j3md
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/53/trunk/assets/MatDefs/SkyFromAtmosphere.j3md
+END
+SkyFromAtmosphere.frag
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/53/trunk/assets/MatDefs/SkyFromAtmosphere.frag
+END
+SkyFromAtmosphere.vert
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/53/trunk/assets/MatDefs/SkyFromAtmosphere.vert
+END
+SkyFromSpace.j3md
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/!svn/ver/53/trunk/assets/MatDefs/SkyFromSpace.j3md
+END
+SkyFromSpace.frag
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/!svn/ver/53/trunk/assets/MatDefs/SkyFromSpace.frag
+END
+SkyFromSpace.vert
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/!svn/ver/53/trunk/assets/MatDefs/SkyFromSpace.vert
+END
+GroundFromAtmosphere.j3md
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/53/trunk/assets/MatDefs/GroundFromAtmosphere.j3md
+END
+GroundFromAtmosphere.frag
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/53/trunk/assets/MatDefs/GroundFromAtmosphere.frag
+END
+GroundFromAtmosphere.vert
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/53/trunk/assets/MatDefs/GroundFromAtmosphere.vert
+END

@@ -1,0 +1,47 @@
+MaterialDef GroundFromAtmosphere {
+
+    MaterialParameters {
+        Vector3 v3CameraPos        
+        Vector3 v3LightPos         
+        Vector3 v3InvWavelength    
+        Float fCameraHeight2       
+        Float fOuterRadius         
+        Float fInnerRadius         
+        Float fInnerRadius2        
+        Float fKrESun              
+        Float fKmESun              
+        Float fKr4PI               
+        Float fKm4PI               
+        Float fScale               
+        Float fScaleDepth          
+        Float fScaleOverScaleDepth 
+        Int nSamples
+        Float fSamples
+        Float fExposure
+        Texture2D Diffuse1
+        Texture2D Diffuse2
+        Float Time
+        Float Speed        
+    }
+
+
+    Technique {
+        VertexShader GLSL110:   MatDefs/GroundFromAtmosphere.vert
+        FragmentShader GLSL110: MatDefs/GroundFromAtmosphere.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+            WorldMatrix
+            Position
+            Normal
+        }
+
+        RenderState {
+            Blend Alpha
+            FaceCull Back
+            DepthTest On
+            DepthWrite On
+        }
+    }
+
+}

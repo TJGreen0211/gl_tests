@@ -1,0 +1,44 @@
+MaterialDef SkyFromSpace {
+
+    MaterialParameters {
+        Vector3 v3CameraPos        
+        Vector3 v3LightPos         
+        Vector3 v3InvWavelength    
+        Float fCameraHeight        
+        Float fCameraHeight2       
+        Float fOuterRadius         
+        Float fOuterRadius2        
+        Float fInnerRadius         
+        Float fInnerRadius2        
+        Float fKrESun              
+        Float fKmESun              
+        Float fKr4PI               
+        Float fKm4PI               
+        Float fScale               
+        Float fScaleDepth          
+        Float fScaleOverScaleDepth 
+        Int nSamples
+        Float fSamples
+        Float fExposure
+        Float fg
+        Float fg2
+    }
+
+    Technique {
+        VertexShader GLSL110:   MatDefs/SkyFromSpace.vert
+        FragmentShader GLSL110: MatDefs/SkyFromSpace.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+            WorldMatrix
+            Position
+        }
+
+        RenderState {
+            FaceCull Front
+            Blend AlphaAdditive
+            DepthTest On
+            DepthWrite On
+        }
+    }
+}
